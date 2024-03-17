@@ -67,7 +67,7 @@ class MLP():
             f_mean = abs(np.mean(freq_domain))
             f_max = abs(max(freq_domain))
             f_total_power = np.sum(np.abs(freq_domain) ** 2)
-            processed_features += [t_mean, t_std_deviation, t_rms, t_skew, t_kurtosis, t_50_q, f_mean, f_max, f_total_power]
+            processed_features += [t_mean, t_std_deviation, t_rms, t_skew, t_50_q, t_kurtosis, f_mean, f_max, f_total_power]
         
         # processed features should have 54 values
         
