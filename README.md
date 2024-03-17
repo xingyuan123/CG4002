@@ -1,11 +1,11 @@
 # Ext Comms Setup
+>Note: Keep all terminals open throughout evaluation  
 
 <details>
 <summary>If setting up MQTT</summary>
 <br>   
 
 ### On Relay Laptop (MQTT broker)
->Note: Keep all terminals open throughout evaluation  
 
 1. Run Docker Desktop.
 2. On a terminal, run `docker run -p 8080:8080 -p 1883:1883 hivemq/hivemq4` to start the MQTT broker.
