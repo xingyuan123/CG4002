@@ -5,7 +5,7 @@ from threading import Event
 from Helper import ice_print_a as print
 
 # attacks, shield, reload or shoot
-actions = ['bomb', 'ironMan', 'hulk', 'captAmerica', 'shangChi', 'shield', 'reload', 'logout']
+actions = ['bomb', 'captAmerica', 'hulk', 'idle', 'ironMan', 'logout', 'reload', 'shangChi', 'shield']
 
 class Dummy_AI: 
     def gen_action(self, queue_in: Queue, queue_out: Queue, end: Event):
@@ -13,14 +13,16 @@ class Dummy_AI:
         while True:
             data, player_id = queue_in.get()
             print(f'Got {data}')
-            action = actions[randint(0, 7)]
+            action = actions[randint(0, 8)]
             action = 'bomb'
             print(f'Generate {action} by player {player_id}')
 
-            # stop early logout, get another action
-            if action == 'logout' and not end.is_set():
-                print(f'Logout received early. Try again')
-                continue
-            
-            queue_out.put([action, player_id])
-            sleep(1) # temp measure to prevent 
+            # handle idle action
+            if action == 'idle':
+                print('Try again')
+            # stop early logout
+            elif action == 'logout' and not end.is_set():
+                print('Logout received early. Try again')
+            else:
+                queue_out.put([action, player_id])
+            sleep(1) # temp
