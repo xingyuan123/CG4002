@@ -8,7 +8,8 @@ from time import perf_counter
 conn = socket.socket()
 
 class EvalClient: 
-    def __init__(self, msg: MsgHelper, port): 
+    def __init__(self, num_players, msg: MsgHelper, port): 
+        self.num_players = num_players
         self.msg = msg
 
         # connect to eval server
@@ -33,18 +34,19 @@ class EvalClient:
 
     def conn_eval_server(self, eval_out: Queue, eval_in: Queue, round_end: Event):
         while True:
-            self.success = False
+            # self.success = False
             # tries = 4
-            player_info = eval_out.get()
-            print(f'Sending data: {player_info}')
             
             start_time = perf_counter()
-            send_and_recv = Thread(target=self.send_and_recv, args=(player_info, eval_in,))
-            send_and_recv.start()
-            send_and_recv.join(timeout = 69)  # CURRENTLY SET TO OVER 1 MIN!!!!!!!!!!!!!!!!!! 
+            for _ in range(self.num_players):
+                player_info = eval_out.get()
+                print(f'Sending data: {player_info}')
+                send_and_recv = Thread(target=self.send_and_recv, args=(player_info, eval_in,))
+                send_and_recv.start()
+                send_and_recv.join(timeout = 69)  # CURRENTLY SET TO OVER 1 MIN!!!!!!!!!!!!!!!!!! 
             print(f'Server response time: {perf_counter()-start_time}')
-            if self.success:
-                round_end.set()
+            # if self.success:
+            round_end.set()
             # # send again if no response received in 14 seconds (max 4 tries)
             # # timeout for eval server is 60 seconds
             # while tries: 

@@ -6,10 +6,10 @@ from DataServer import DataServer
 from EvalClient import EvalClient
 from GameEngine import GameEngine
 # from VizMqttClient import VizMqttClient
+from ai.MLP_wrapper import MLP as AI
+# from dummy_AI import Dummy_AI as AI
 from Helper import MsgHelper
 from time import perf_counter
-
-from dummy_AI import Dummy_AI
 
 w, _ = shutil.get_terminal_size()
 def print_line():
@@ -19,9 +19,12 @@ async def main():
     # port = int(input('port: '))
     port = 8888
     password    = '1234567890123456'
-    num_players = 1 
+    num_players = 1
 
-    action_done = [Event(), Event()]
+    action_done = {
+        1: Event(), 
+        2: Event()
+    }
     round_end = Event()
     game_end  = Event()
 
@@ -32,14 +35,14 @@ async def main():
     eng_in = Queue()
     eval_in = Queue()
 
-    # Dummy AI
-    dummy_AI = Dummy_AI()
+    # AI
+    ai = AI()
 
     # Eval Client
-    eval_client = EvalClient(msg_helper, port)
+    eval_client = EvalClient(num_players, msg_helper, port)
     eval_out = Queue()
 
-    # Visualiser
+    # # Visualiser
     # viz_client = VizMqttClient()
     viz_out = Queue()
 
@@ -54,14 +57,14 @@ async def main():
     data_recv.start()
     
     # 2. AI generate action using data (dummy)
-    ai_action = Thread(target=dummy_AI.gen_action, args=(data_in, eng_in, game_end,))
+    ai_action = Thread(target=ai.gen_action, args=(data_in, eng_in, game_end,))
     ai_action.start()
 
     # 3. Perform action: Updates game state, send to hardware & viz, eval server
     eng_action = Thread(target=engine.perform_action, args=(eng_in, action_done, eval_out, viz_out, data_out,)) 
     eng_action.start()
 
-    # 4. MQTT: Send to Visualiser
+    # # 4. MQTT: Send to Visualiser
     # viz_send = Thread(target=viz_client.send_to_broker, args=(viz_out,))
     # viz_send.start()
 
@@ -77,15 +80,14 @@ async def main():
     data_send = Thread(target=data_server.send_data, args=(data_out,))
     data_send.start()
 
-    queues  = [eng_in, eval_in, viz_out, data_in] # eval_out, data_out not affected by purge
+    queues  = [eng_in, eval_in, viz_out, data_in, eval_out, data_out] # not affected by purge
     threads = [data_recv, ai_action, eng_action, eval_conn, eng_fix, data_send] # viz_send, 
 
     print_line()
-
     min_rounds = 22
     max_rounds = 23
     num_rounds = 0
-    timeout = 70 # timeout for eval server = 60s + buffer
+    timeout = 70 # timeout for eval server = 60s + 10s buffer
     start_time = perf_counter()
     while True:
         time = perf_counter() - start_time
@@ -96,7 +98,7 @@ async def main():
         if round_end.is_set():                
             num_rounds += 1
             print(f'Time elapsed for round: {time}')
-            print(f'Number of rounds: {num_rounds}\n')
+            print(f'Number of rounds: {num_rounds}')
 
             # clear all queues to prep for next round
             for queue in queues:
@@ -105,7 +107,7 @@ async def main():
             
             # clear player actions done
             for player in action_done:
-                player.clear()
+                action_done[player].clear()
             
             # start next round
             print_line()
@@ -117,9 +119,11 @@ async def main():
             game_end.set()
         # if game has ended
         if num_rounds >= max_rounds:
-            print('Ending game. Bye!')
-            for thread in threads:
-                thread.join()
+            break
+
+    for thread in threads:
+        thread.join()
+    print('Ending game. Bye!')
 
 if __name__ == "__main__":
     print('Initialising Ultra96')

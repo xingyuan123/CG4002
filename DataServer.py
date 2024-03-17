@@ -1,6 +1,7 @@
 import asyncio
 import socket
 import ast
+from pandas import DataFrame
 from queue import Queue
 from Helper import MsgHelper, ice_print_d as print
 
@@ -68,7 +69,7 @@ class DataServer:
                 await self.accept()
                 self.conn.setblocking(True)
                 continue
-            print(f'Received: {data}')
+            # print(f'Received: {data}')
             data = ast.literal_eval(data)
             device, player_id = self.DEVICE_IDS[data[0]]
             print(f'Player: {player_id}, Device: {device}')
@@ -82,7 +83,8 @@ class DataServer:
                 (health, shield) = data[1:]
                 print(f'Got vest with {health} hp and {shield} shield hp')
             elif device == 'GLOVE':
-                sensor_data = data[1]
+                sensor_data = DataFrame(data[1])
+                print(f'Got data \n{sensor_data}')
                 ai_q.put([sensor_data, player_id])
             elif device == 'GUN':
                 # check if opponent is hit in future!!

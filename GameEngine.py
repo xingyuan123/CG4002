@@ -47,9 +47,11 @@ class GameEngine:
             # if game state is different, fix and update hardware, visualiser
             is_different = self.game_state.fix_difference(received_game_state)
             game_state = self.get_game_state_dict()
-            if is_different:
-                data_out.put(game_state)
-                viz_out.put(['game_state', game_state])
+            data_out.put(game_state) ## !! outside of is_different check, will send both after action and after eval server response
+            viz_out.put(['game_state', game_state])
+            # if is_different:
+                # data_out.put(game_state)
+                # viz_out.put(['game_state', game_state])
 
     def get_game_state_dict(self):
         return self.game_state.get_dict()
