@@ -1,0 +1,61 @@
+import socket
+import json
+from Helper import MsgHelper, ice_print_e as print
+from queue import Queue
+from threading import Thread, Event
+from time import perf_counter
+
+conn = socket.socket()
+
+class EvalClient: 
+    def __init__(self, msg: MsgHelper, port): 
+        self.msg = msg
+
+        # connect to eval server
+        SERVER = 'localhost' 
+        PORT = port 
+        ADDR = (SERVER, PORT)
+        conn.connect(ADDR)
+        print('Client connected')
+
+        # send hello packet to verify password
+        conn.send(msg.format_text('hello', encrypted=True))
+
+    def send_and_recv(self, player_info, recv_q: Queue):
+        # send player info (id, action, game state)
+        conn.send(self.msg.format_text(json.dumps(player_info), encrypted=True))
+
+        # recv correct game state
+        self.success, recv = self.msg.recv_text(conn) 
+        if self.success:
+            print(f'Receive data: {recv}')
+            recv_q.put(json.loads(recv))
+
+    def conn_eval_server(self, eval_out: Queue, eval_in: Queue, round_end: Event):
+        while True:
+            self.success = False
+            # tries = 4
+            player_info = eval_out.get()
+            print(f'Sending data: {player_info}')
+            
+            start_time = perf_counter()
+            send_and_recv = Thread(target=self.send_and_recv, args=(player_info, eval_in,))
+            send_and_recv.start()
+            send_and_recv.join(timeout = 69)  # CURRENTLY SET TO OVER 1 MIN!!!!!!!!!!!!!!!!!! 
+            print(f'Server response time: {perf_counter()-start_time}')
+            if self.success:
+                round_end.set()
+            # # send again if no response received in 14 seconds (max 4 tries)
+            # # timeout for eval server is 60 seconds
+            # while tries: 
+            #     print(f'Tries left: {tries}')
+            #     send_and_recv = Thread(target=self.send_and_recv, args=(player_info, eval_in,))
+            #     send_and_recv.start()
+            #     send_and_recv.join(timeout=10) 
+            #     tries -= 1
+            
+            # eval server timed out, continue with existing game state
+            # if not self.success:
+            #     print('Eval server timed out')
+            
+            # round_end.set()
