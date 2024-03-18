@@ -6,20 +6,25 @@ from DataServer import DataServer
 from EvalClient import EvalClient
 from GameEngine import GameEngine
 # from VizMqttClient import VizMqttClient
-from ai.MLP_wrapper import MLP as AI
-# from dummy_AI import Dummy_AI as AI
+# from ai.MLP_wrapper import MLP as AI
+from dummy_AI import Dummy_AI as AI
 from Helper import MsgHelper
-from time import perf_counter
+from time import perf_counter, sleep
 
 w, _ = shutil.get_terminal_size()
 def print_line():
     print('='*w)
     
 async def main():
-    # port = int(input('port: '))
-    port = 8888
+    port = int(input('port: '))
+    # port = 8888
     password    = '1234567890123456'
     num_players = 1
+
+    min_rounds = 22
+    max_rounds = 23
+    num_rounds = 0
+    timeout = 70 # timeout for eval server = 60s + 10s buffer
 
     action_done = {
         1: Event(), 
@@ -54,41 +59,33 @@ async def main():
     
     # 1. TCP: Receive data from data client
     data_recv = Thread(target=data_server.recv_data_p, args=(action_done, data_in, eng_in,))
-    data_recv.start()
     
     # 2. AI generate action using data (dummy)
     ai_action = Thread(target=ai.gen_action, args=(data_in, eng_in, game_end,))
-    ai_action.start()
 
     # 3. Perform action: Updates game state, send to hardware & viz, eval server
     eng_action = Thread(target=engine.perform_action, args=(eng_in, action_done, eval_out, viz_out, data_out,)) 
-    eng_action.start()
 
     # # 4. MQTT: Send to Visualiser
     # viz_send = Thread(target=viz_client.send_to_broker, args=(viz_out,))
-    # viz_send.start()
 
     # 5. TCP: Send/receive from Eval Server
     eval_conn = Thread(target=eval_client.conn_eval_server, args=(eval_out, eval_in, round_end,))
-    eval_conn.start()
 
     # 6. Fix game state (if needed): Send to hardware and viz
     eng_fix = Thread(target=engine.fix_game_state, args=(eval_in, viz_out, data_out,))
-    eng_fix.start()
 
     # 7. TCP: Send data back to data client
     data_send = Thread(target=data_server.send_data, args=(data_out,))
-    data_send.start()
 
-    queues  = [eng_in, eval_in, viz_out, data_in, eval_out, data_out] # not affected by purge
+    queues  = [eng_in, eval_in, data_in, eval_out] # viz_out, data_out
     threads = [data_recv, ai_action, eng_action, eval_conn, eng_fix, data_send] # viz_send, 
 
     print_line()
-    min_rounds = 22
-    max_rounds = 23
-    num_rounds = 0
-    timeout = 70 # timeout for eval server = 60s + 10s buffer
+    for thread in threads: 
+        thread.start()
     start_time = perf_counter()
+
     while True:
         time = perf_counter() - start_time
         if time > timeout:
@@ -100,12 +97,13 @@ async def main():
             print(f'Time elapsed for round: {time}')
             print(f'Number of rounds: {num_rounds}')
 
-            # clear all queues to prep for next round
+            # clear queues to prep for next round
             for queue in queues:
                 with queue.mutex:
                     queue.queue.clear()
             
-            # clear player actions done
+            # clear player done status after delay
+            sleep(2)
             for player in action_done:
                 action_done[player].clear()
             

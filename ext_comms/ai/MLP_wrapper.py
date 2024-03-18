@@ -5,6 +5,7 @@ from queue import Queue
 from threading import Event
 from scipy.stats import skew, kurtosis
 from random import randint
+from Helper import ice_print_a as print
 import pickle
 
 actions = ['bomb', 'captAmerica', 'hulk', 'idle', 'ironMan', 'logout', 'reload', 'shangChi', 'shield']
