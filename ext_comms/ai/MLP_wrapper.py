@@ -4,7 +4,6 @@ import numpy as np
 from queue import Queue
 from threading import Event
 from scipy.stats import skew, kurtosis
-from random import randint
 from Helper import ice_print_a as print
 import pickle
 
@@ -33,7 +32,6 @@ class MLP():
             test_point = self.preprocess(data)
             action = actions[self.inference(test_point)]
             self.cleanup_inference()
-            # action = actions[randint(0, 7)]
             print(f'Generate {action} by player {player_id}')
 
             # handle idle action

@@ -5,11 +5,12 @@ from queue import Queue
 from DataServer import DataServer
 from EvalClient import EvalClient
 from GameEngine import GameEngine
-from VizMqttClient import VizMqttClient
+# from VizMqttClient import VizMqttClient
 # from ai.MLP_wrapper import MLP as AI
 from dummy_AI import Dummy_AI as AI
 from Helper import MsgHelper
 from time import perf_counter, sleep
+from random import randint
 
 def print_line():
     w, _ = shutil.get_terminal_size()
@@ -21,10 +22,12 @@ async def main():
     password    = '1234567890123456'
     num_players = 1
 
-    min_rounds = 22
-    max_rounds = 23
+    min_rounds = 21
+    max_rounds = 30
     num_rounds = 0
-    timeout = 70 # timeout for eval server = 60s + 10s buffer
+
+    failsafe = 45 # time before random ai action is generated
+    timeout  = 70 # timeout for eval server = 60s + 10s buffer
 
     action_done = {
         1: Event(), 
@@ -51,7 +54,7 @@ async def main():
     eval_out = Queue()
 
     # # Visualiser
-    viz_client = VizMqttClient()
+    # viz_client = VizMqttClient()
     viz_out = Queue()
 
     # Data Server
@@ -70,7 +73,7 @@ async def main():
     eng_action = Thread(target=engine.perform_action, args=(eng_in, action_done, eval_out, viz_out, data_out,)) 
 
     # # 4. MQTT: Send to Visualiser
-    viz_send = Thread(target=viz_client.send_to_broker, args=(viz_out,))
+    # viz_send = Thread(target=viz_client.send_to_broker, args=(viz_out,))
 
     # 5. TCP: Send/receive from Eval Server
     eval_conn = Thread(target=eval_client.conn_eval_server, args=(eval_out, eval_in, round_end,))
@@ -82,18 +85,30 @@ async def main():
     data_send = Thread(target=data_server.send_data, args=(data_out,))
 
     queues  = [eng_in, eval_in, data_in, eval_out] # viz_out, data_out
-    threads = [data_recv, ai_action, eng_action, viz_send, eval_conn, eng_fix, data_send]
+    threads = [data_recv, ai_action, eng_action, eval_conn, eng_fix, data_send] # viz_send, 
 
     print_line()
     for thread in threads: 
         thread.start()
     start_time = perf_counter()
+    ai_actions = ['shield', 'bomb', 'reload', 'ironMan', 'hulk', 'captAmerica', 'shangChi']
 
     while True:
         time = perf_counter() - start_time
+
+        # no response from hardware
+        if time > failsafe and ai_done.is_set() and not round_end.is_set():
+            print('Failsafe: Randomly generating action')
+            for i in range(num_players):
+                player_id = i+1
+                action = ai_actions[randint(0, 6)]
+                eng_in.put([action, player_id])
+            round_end.wait()
+        # server timeout
         if time > timeout:
             round_end.set()
             print('Timeout')
+        
         # at end of every round
         if round_end.is_set():                
             num_rounds += 1

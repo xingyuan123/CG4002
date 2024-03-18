@@ -20,8 +20,8 @@ class GameEngine:
             # get action and calculate new game state
             action, player_id = action_in.get()
             print(f'Processing {action} by player {player_id}')
-            self.game_state.perform_action (action, player_id, pos_1, pos_2,
-                                            self.does_not_have_visualizer)
+            self.game_state.perform_action(action, player_id, pos_1, pos_2,
+                                          self.does_not_have_visualizer)
             action_done[player_id].set()
             game_state = self.get_game_state_dict()
             # send game state to hardware
