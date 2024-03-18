@@ -4,6 +4,7 @@ import ast
 from pandas import DataFrame
 from queue import Queue
 from Helper import MsgHelper, ice_print_d as print
+from threading import Event
 
 colour = 4
 
@@ -58,9 +59,10 @@ class DataServer:
         self.conn, self.addr = await loop.sock_accept(self.socket)
         print('Client connected')
 
-    async def recv_data(self, action_done, ai_q: Queue, eng_q: Queue):
+    async def recv_data(self, action_done, ai_done: Event, ai_q: Queue, eng_q: Queue):
         self.conn.setblocking(True)
         while True:
+            ai_done.wait()
             try:
                 _, data = self.msg.recv_text(self.conn)
             except:
@@ -81,19 +83,20 @@ class DataServer:
 
             if device == 'VEST':
                 (health, shield) = data[1:]
-                print(f'Got vest with {health} hp and {shield} shield hp')
+                print(f'P{player_id} hp: {health}, shield hp: {shield}')
             elif device == 'GLOVE':
                 sensor_data = DataFrame(data[1])
-                print(f'Got data \n{sensor_data}')
+                print(f'P{player_id} glove data:\n{sensor_data}')
+                ai_done.clear()
                 ai_q.put([sensor_data, player_id])
             elif device == 'GUN':
                 # check if opponent is hit in future!!
                 bullets = data[1]
-                print(f'Got gun with {bullets} bullets')
+                print(f'P{player_id} bullets: {bullets}')
                 eng_q.put(['gun', player_id])
 
-    def recv_data_p(self, action_done, ai_q: Queue, eng_q: Queue):
-        asyncio.run(self.recv_data(action_done, ai_q, eng_q))
+    def recv_data_p(self, action_done, ai_done, ai_q: Queue, eng_q: Queue):
+        asyncio.run(self.recv_data(action_done, ai_done, ai_q, eng_q))
 
     def send_data(self, queue: Queue):
         while True:

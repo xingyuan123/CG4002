@@ -25,7 +25,7 @@ class MLP():
         self._load_scaler()
         self._load_normalizer()
     
-    def gen_action(self, queue_in: Queue, queue_out: Queue, end: Event):
+    def gen_action(self, done: Event, queue_in: Queue, queue_out: Queue, end: Event):
         while True:
             data, player_id = queue_in.get()
             self.inputbuffer = allocate(shape=(54,), dtype=np.int32)
@@ -44,6 +44,7 @@ class MLP():
                 print('Logout received early. Try again')
             else:
                 queue_out.put([action, player_id])
+            done.set()
 
     def preprocess(self, data):
         # data: dataframe of 6 columns and 86 rows
