@@ -1,5 +1,7 @@
 # Ext Comms Setup
->Note: Keep all terminals open throughout evaluation  
+>Note:  
+>- Keep all terminals open throughout evaluation  
+>- To reset the Eval Server, just refresh the browser page
 
 <details>
 <summary>If setting up MQTT</summary>
