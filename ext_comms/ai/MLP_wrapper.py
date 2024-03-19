@@ -6,6 +6,8 @@ from threading import Event
 from scipy.stats import skew, kurtosis
 from Helper import ice_print_a as print
 import pickle
+import warnings
+warnings.filterwarnings("ignore")
 
 actions = ['bomb', 'captAmerica', 'hulk', 'idle', 'ironMan', 'logout', 'reload', 'shangChi', 'shield']
 

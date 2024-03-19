@@ -26,6 +26,7 @@ async def main():
     max_rounds = 30
     num_rounds = 0
 
+    failsafe_action = 'hulk'
     failsafe = 45 # time before random ai action is generated
     timeout  = 70 # timeout for eval server = 60s + 10s buffer
 
@@ -33,6 +34,11 @@ async def main():
         1: Event(), 
         2: Event()
     }
+    connect = [Event() for i in range(7)]
+    if num_players == 1:
+        # unused devices
+        for i in [1, 5, 6]:
+            connect[i].set()
    
     round_end = Event()
     game_end  = Event()
@@ -64,7 +70,7 @@ async def main():
     await data_server.accept()
     
     # 1. TCP: Receive data from data client
-    data_recv = Thread(target=data_server.recv_data_p, args=(action_done, ai_done, data_in, eng_in,))
+    data_recv = Thread(target=data_server.recv_data_p, args=(action_done, ai_done, connect, data_in, eng_in,))
     
     # 2. AI generate action using data (dummy)
     ai_action = Thread(target=ai.gen_action, args=(ai_done, data_in, eng_in, game_end,))
@@ -87,22 +93,25 @@ async def main():
     queues  = [eng_in, eval_in, data_in, eval_out] # viz_out, data_out
     threads = [data_recv, ai_action, eng_action, eval_conn, eng_fix, data_send] # viz_send, 
 
-    print_line()
     for thread in threads: 
         thread.start()
+
+    connect[0].wait()
     start_time = perf_counter()
-    ai_actions = ['shield', 'bomb', 'reload', 'ironMan', 'hulk', 'captAmerica', 'shangChi']
-
+    print('Starting game')
+    print_line()
     while True:
+        if not connect[0].is_set(): 
+            start_time = perf_counter()
         time = perf_counter() - start_time
-
+        
         # no response from hardware
         if time > failsafe and ai_done.is_set() and not round_end.is_set():
             print('Failsafe: Randomly generating action')
             for i in range(num_players):
                 player_id = i+1
-                action = ai_actions[randint(0, 6)]
-                eng_in.put([action, player_id])
+                # action = ai_actions[randint(0, 6)]
+                eng_in.put([failsafe_action, player_id])
             round_end.wait()
         # server timeout
         if time > timeout:

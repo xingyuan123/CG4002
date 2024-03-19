@@ -59,7 +59,7 @@ class DataServer:
         self.conn, self.addr = await loop.sock_accept(self.socket)
         print('Client connected')
 
-    async def recv_data(self, action_done, ai_done: Event, ai_q: Queue, eng_q: Queue):
+    async def recv_data(self, action_done, ai_done: Event, connect, ai_q: Queue, eng_q: Queue):
         self.conn.setblocking(True)
         while True:
             ai_done.wait()
@@ -75,6 +75,27 @@ class DataServer:
             data = ast.literal_eval(data)
             device, player_id = self.DEVICE_IDS[data[0]]
             print(f'Player: {player_id}, Device: {device}')
+
+            # handle disconnect packets
+            if data[1] == 'D':
+                connect[data[0]].clear()
+                connect[0].clear()
+                print(f'PLAYER {player_id} {device} DISCONNECTED')
+                continue
+            if data[1] == 'C':
+                connect[data[0]].set()
+                print(f'PLAYER {player_id} {device} CONNECTED')
+                reconnected = True
+                for item in connect[1:]:
+                    if not item.is_set():
+                        print(f'DEVICES STILL DISCONNECTED')
+                        reconnected = False
+                        break
+                # no devices disconnected
+                if reconnected:
+                    print('ALL DEVICES CONNECTED')
+                    connect[0].set()
+                continue
 
             # if player has already done action, do not process
             if action_done[player_id].is_set():
@@ -95,8 +116,8 @@ class DataServer:
                 print(f'P{player_id} bullets: {bullets}')
                 eng_q.put(['gun', player_id])
 
-    def recv_data_p(self, action_done, ai_done, ai_q: Queue, eng_q: Queue):
-        asyncio.run(self.recv_data(action_done, ai_done, ai_q, eng_q))
+    def recv_data_p(self, action_done, ai_done: Event, connect, ai_q: Queue, eng_q: Queue):
+        asyncio.run(self.recv_data(action_done, ai_done, connect, ai_q, eng_q))
 
     def send_data(self, queue: Queue):
         while True:
