@@ -10,7 +10,6 @@ from GameEngine import GameEngine
 from dummy_AI import Dummy_AI as AI
 from Helper import MsgHelper
 from time import perf_counter, sleep
-from random import randint
 
 def print_line():
     w, _ = shutil.get_terminal_size()
@@ -111,13 +110,12 @@ async def main():
         time = perf_counter() - start_time
         
         # no response from hardware
-        if not failsafe_sent and time > failsafe and ai_done.is_set():
+        if not failsafe_sent and time > failsafe and ai_done.is_set(): # and not eval_client.sent.is_set(): 
             print(f'Failsafe: Sending {failsafe_action}')
             for i in range(num_players):
                 player_id = i+1
                 eng_in.put([failsafe_action, player_id])
             failsafe_sent = True
-            # round_end.wait()
         # server timeout
         if time > timeout:
             round_end.set()
@@ -142,6 +140,8 @@ async def main():
             # start next round
             print_line()
             failsafe_sent = False
+            eval_client.sent.clear()
+            eval_client.received.clear()
             round_end.clear()
             start_time = perf_counter()
 
