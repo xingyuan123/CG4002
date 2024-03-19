@@ -36,17 +36,28 @@ class EvalClient:
         while True:
             # self.success = False
             # tries = 4
-            
             start_time = perf_counter()
+            # send_and_recv = Thread(target=self.send_and_recv, args=(player_info, eval_in,))
             for _ in range(self.num_players):
                 player_info = eval_out.get()
                 print(f'Sending data: {player_info}')
-                send_and_recv = Thread(target=self.send_and_recv, args=(player_info, eval_in,))
-                send_and_recv.start()
-                send_and_recv.join(timeout = 69)  # CURRENTLY SET TO OVER 1 MIN!!!!!!!!!!!!!!!!!! 
-            print(f'Server response time: {perf_counter()-start_time}')
+                # send player info (id, action, game state)
+                conn.send(self.msg.format_text(json.dumps(player_info), encrypted=True))
+
+                # recv correct game state
+                self.success, recv = self.msg.recv_text(conn) 
+                if self.success:
+                    print(f'Receive data: {recv}')
+                    eval_in.put(json.loads(recv))
+                    print(f'Server response time: {perf_counter()-start_time}')
+                    round_end.set()
+                else: 
+                    print('Issue getting game state from eval server')
+                # send_and_recv.start()
+                # send_and_recv.join(timeout = 100)  # CURRENTLY SET TO OVER 1 MIN!!!!!!!!!!!!!!!!!! 
+            
             # if self.success:
-            round_end.set()
+            
             # # send again if no response received in 14 seconds (max 4 tries)
             # # timeout for eval server is 60 seconds
             # while tries: 

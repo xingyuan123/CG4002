@@ -101,18 +101,22 @@ async def main():
     print('Starting game')
     print_line()
     while True:
-        if not connect[0].is_set(): 
+        if not connect[0].is_set() and num_rounds >= 17 and num_rounds <= 20: 
             start_time = perf_counter()
+        if not connect[3].is_set():
+            failsafe_action = 'gun'
+        else:
+            failsafe_action = 'hulk'
         time = perf_counter() - start_time
         
         # no response from hardware
-        if time > failsafe and ai_done.is_set() and not round_end.is_set():
-            print('Failsafe: Randomly generating action')
+        if not failsafe_sent and time > failsafe and ai_done.is_set():
+            print(f'Failsafe: Sending {failsafe_action}')
             for i in range(num_players):
                 player_id = i+1
-                # action = ai_actions[randint(0, 6)]
                 eng_in.put([failsafe_action, player_id])
-            round_end.wait()
+            failsafe_sent = True
+            # round_end.wait()
         # server timeout
         if time > timeout:
             round_end.set()
@@ -136,6 +140,7 @@ async def main():
             
             # start next round
             print_line()
+            failsafe_sent = False
             round_end.clear()
             start_time = perf_counter()
 
