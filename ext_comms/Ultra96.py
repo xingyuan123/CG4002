@@ -27,8 +27,9 @@ async def main():
     num_rounds = 0
 
     failsafe_action = 'hulk'
+    failsafe_sent = False
     failsafe = 45 # time before random ai action is generated
-    timeout  = 70 # timeout for eval server = 60s + 10s buffer
+    timeout  = 60 # timeout for eval server = 60s + 10s buffer
 
     action_done = {
         1: Event(), 
