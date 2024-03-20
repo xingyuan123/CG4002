@@ -91,26 +91,34 @@ async def main():
     data_send = Thread(target=data_server.send_data, args=(data_out,))
 
     queues  = [eng_in, eval_in, data_in, eval_out] # viz_out, data_out
-    threads = [data_recv, ai_action, eng_action, eval_conn, eng_fix, data_send] # viz_send, 
+    threads = [ai_action, eng_action, eval_conn, eng_fix, data_send] # viz_send, 
 
+    # receive initial connect packets
+    data_recv.start()
+    connect[0].wait()
+
+    # initialise
+    for queue in queues:
+        with queue.mutex:
+            queue.queue.clear()
     for thread in threads: 
         thread.start()
-
-    connect[0].wait()
     start_time = perf_counter()
     print('Starting game')
     print_line()
+
     while True:
         if not connect[0].is_set() and num_rounds >= 17 and num_rounds <= 20: 
+            # ignore timeout for logout round
             start_time = perf_counter()
-        if not connect[3].is_set():
-            failsafe_action = 'gun'
-        else:
-            failsafe_action = 'hulk'
         time = perf_counter() - start_time
         
-        # no response from hardware
-        if not failsafe_sent and time > failsafe and ai_done.is_set(): # and not eval_client.sent.is_set(): 
+        # send failsafe only if no response from hardware
+        if not failsafe_sent and time > failsafe and ai_done.is_set() and not eval_client.sent.is_set(): # !!!
+            if not connect[3].is_set():
+                failsafe_action = 'gun'
+            else:
+                failsafe_action = 'hulk'
             print(f'Failsafe: Sending {failsafe_action}')
             for i in range(num_players):
                 player_id = i+1
