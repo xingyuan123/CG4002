@@ -4,7 +4,7 @@ import numpy as np
 from queue import Queue
 from threading import Event
 from scipy.stats import skew, kurtosis
-from Helper import ice_print_a as print
+from Helper import ice_print_a as print, ice_print_x as alert
 import pickle
 import warnings
 warnings.filterwarnings("ignore")
@@ -29,6 +29,7 @@ class MLP():
     def gen_action(self, done: Event, queue_in: Queue, queue_out: Queue, end: Event):
         while True:
             data, player_id = queue_in.get()
+            done.clear()
             self.inputbuffer = allocate(shape=(54,), dtype=np.int32)
             self.outputbuffer = allocate(shape=(9,), dtype=np.int32)
             test_point = self.preprocess(data)
@@ -38,10 +39,10 @@ class MLP():
 
             # handle idle action
             if action == 'idle':
-                print('Try again')
+                alert('Idle received. Try again')
             # stop early logout
             elif action == 'logout' and not end.is_set():
-                print('Logout received early. Try again')
+                alert('Logout received early. Try again')
             else:
                 queue_out.put([action, player_id])
             done.set()

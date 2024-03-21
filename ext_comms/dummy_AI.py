@@ -2,7 +2,7 @@ from queue import Queue
 from random import randint
 from time import sleep
 from threading import Event
-from Helper import ice_print_a as print
+from Helper import ice_print_a as print, ice_print_x as alert
 
 # attacks, shield, reload or shoot
 actions = ['bomb', 'captAmerica', 'hulk', 'idle', 'ironMan', 'logout', 'reload', 'shangChi', 'shield']
@@ -12,6 +12,7 @@ class Dummy_AI:
         print('AI running')
         while True:
             data, player_id = queue_in.get()
+            done.clear()
             print(f'Got {data}')
             sleep(3) # temp
             action = actions[randint(0, 8)]
@@ -20,10 +21,10 @@ class Dummy_AI:
 
             # handle idle action
             if action == 'idle':
-                print('Try again')
+                alert('Idle received. Try again')
             # stop early logout
             elif action == 'logout' and not end.is_set():
-                print('Logout received early. Try again')
+                alert('Logout received early. Try again')
             else:
                 queue_out.put([action, player_id])
             done.set()

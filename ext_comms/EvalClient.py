@@ -2,7 +2,6 @@ import socket
 import json
 from queue import Queue
 from threading import Thread, Event
-from time import perf_counter
 from Helper import MsgHelper, ice_print_e as print
 
 conn = socket.socket()
@@ -51,7 +50,7 @@ class EvalClient:
                 if self.success:
                     print(f'Receive data: {recv}')
                     eval_in.put(json.loads(recv))
-                    self.received.set()
+            self.received.set()
 
     def conn_eval_server(self, eval_out: Queue, eval_in: Queue, round_end: Event):
         send_thread = Thread(target=self.send, args=(eval_out,))

@@ -3,9 +3,13 @@ import os
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 
+def ice_print_x(arg):
+    arg = '-ALERT- {}'.format(arg)
+    ice_print(arg, color=1)
+
 def ice_print_a(arg):
     arg = '[ AI ]: {}'.format(arg)
-    ice_print(arg, color=1)
+    ice_print(arg, color=8)
 
 def ice_print_g(arg):
     arg = '[GAME]: {}'.format(arg)
@@ -22,6 +26,10 @@ def ice_print_m(arg):
 def ice_print_d(arg):
     arg = '[DATA]: {}'.format(arg)
     ice_print(arg, color=6)
+
+def ice_print_t(arg):
+    arg = '[TIME]: {}'.format(arg)
+    ice_print(arg, color=11)
 
 def ice_print(*arg, color=0, end='\n'):
     # ANSI colors

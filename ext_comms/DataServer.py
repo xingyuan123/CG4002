@@ -3,10 +3,8 @@ import socket
 import ast
 from pandas import DataFrame
 from queue import Queue
-from Helper import MsgHelper, ice_print_d as print
+from Helper import MsgHelper, ice_print_d as print, ice_print_x as alert
 from threading import Event
-
-colour = 4
 
 def format_game_state(gs):
     return [
@@ -71,29 +69,29 @@ class DataServer:
                 await self.accept()
                 self.conn.setblocking(True)
                 continue
-            # print(f'Received: {data}')
             data = ast.literal_eval(data)
-            device, player_id = self.DEVICE_IDS[data[0]]
+            device_id = data[0]
+            device, player_id = self.DEVICE_IDS[device_id]
             print(f'Player: {player_id}, Device: {device}')
 
             # handle disconnect packets
             if data[1] == 'D':
-                connect[data[0]].clear()
+                connect[device_id].clear()
                 connect[0].clear()
-                print(f'PLAYER {player_id} {device} DISCONNECTED')
+                alert(f'PLAYER {player_id} {device} DISCONNECTED')
                 continue
             if data[1] == 'C':
-                connect[data[0]].set()
-                print(f'PLAYER {player_id} {device} CONNECTED')
+                connect[device_id].set()
+                alert(f'PLAYER {player_id} {device} CONNECTED')
                 reconnected = True
                 for item in connect[1:]:
                     if not item.is_set():
-                        print(f'DEVICES STILL DISCONNECTED')
+                        alert(f'DEVICES STILL DISCONNECTED')
                         reconnected = False
                         break
                 # no devices disconnected
                 if reconnected:
-                    print('ALL DEVICES CONNECTED')
+                    alert('All devices connected! :)')
                     connect[0].set()
                 continue
 
@@ -108,7 +106,6 @@ class DataServer:
             elif device == 'GLOVE':
                 sensor_data = DataFrame(data[1])
                 print(f'P{player_id} glove data:\n{sensor_data}')
-                ai_done.clear()
                 ai_q.put([sensor_data, player_id])
             elif device == 'GUN':
                 # check if opponent is hit in future!!
