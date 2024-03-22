@@ -4,9 +4,9 @@ from threading import Thread, Event
 from queue import Queue
 from DataServer import DataServer
 from GameEngine import GameEngine
-from VizMqttClient import VizMqttClient
-from ai.MLP_wrapper import MLP as AI
-# from dummy_AI import Dummy_AI as AI
+# from VizMqttClient import VizMqttClient
+# from ai.MLP_wrapper import MLP as AI
+from dummy_AI import Dummy_AI as AI
 from Helper import MsgHelper
 from time import sleep
 
@@ -16,13 +16,23 @@ def print_line():
     
 async def main():
     password    = '1234567890123456'
-    num_players = 1
+    num_players = 2
     msg_helper  = MsgHelper(password)
 
     action_done = {
         1: Event(), 
         2: Event()
     }
+    is_shot = {
+        1: Event(), 
+        2: Event()
+    }
+    connect = [Event() for _ in range(7)]
+    if num_players == 1:
+        # unused devices
+        for i in [1, 5, 6]:
+            connect[i].set()
+
     round_end = Event()
     game_end  = Event()
     ai_done   = Event()
@@ -37,7 +47,7 @@ async def main():
     ai = AI()
 
     # Visualiser
-    viz_client = VizMqttClient()
+    # viz_client = VizMqttClient()
     viz_out = Queue()
 
     # Data Server
@@ -47,29 +57,35 @@ async def main():
     await data_server.accept()
     
     # 1. TCP: Receive data from data client
-    data_recv = Thread(target=data_server.recv_data_p, args=(action_done, ai_done, data_in, eng_in,))
+    data_recv  = Thread(target=data_server.recv_data_p, args=(action_done, is_shot, ai_done, connect, data_in, eng_in,))
     
     # 2. AI generate action using data (dummy)
-    ai_action = Thread(target=ai.gen_action, args=(ai_done, data_in, eng_in, game_end,))
+    ai_action  = Thread(target=ai.gen_action, args=(ai_done, data_in, eng_in, game_end,))
 
     # 3. Perform action: Updates game state, send to hardware & viz, eval server
-    eng_action = Thread(target=engine.perform_action, args=(eng_in, action_done, eval_out, viz_out, data_out,)) 
+    eng_action = Thread(target=engine.perform_action, args=(eng_in, action_done, is_shot, eval_out, viz_out, data_out,)) 
 
-    # 4. MQTT: Send to Visualiser
-    viz_send = Thread(target=viz_client.send_to_broker, args=(viz_out,))
+    # # 4. MQTT: Send to Visualiser
+    # viz_send = Thread(target=viz_client.send_to_broker, args=(viz_out,))
 
-    threads = [data_recv, ai_action, eng_action, viz_send]
+    # 7. TCP: Send data back to data client
+    data_send  = Thread(target=data_server.send_data, args=(data_out,))
+
+    threads = [data_recv, ai_action, eng_action, data_send] #, viz_send]
 
     print_line()
     for thread in threads: 
         thread.start()
     
     while True:
-        eval_out.get()
+        for _ in range(num_players):
+            data = eval_out.get()['game_state']
+            data_out.put(data)
         round_end.set()
         sleep(2)
-        for player in action_done:
+        for player in range(1, num_players+1):
             action_done[player].clear()
+            is_shot[player].clear()
         
         # start next round
         print_line()
