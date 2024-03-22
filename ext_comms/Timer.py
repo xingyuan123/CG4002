@@ -10,8 +10,8 @@ class Timer:
         self.num_players = num_players
 
     def start_timer(self, round_end: Event, disconnect: Event, connect, action_done, eng_in: Queue):
-        failsafe = 1 # time before random ai action is generated
-        timeout  = 2 # timeout for eval server = 60s + 10s buffer
+        failsafe = 45 # time before random ai action is generated
+        timeout  = 60 # timeout for eval server = 60s + 10s buffer
         while True:
             # DISCONNECT ROUND
             if disconnect.is_set():
@@ -19,8 +19,8 @@ class Timer:
                 continue
             
             # FAILSAFE
-            round_end.wait(timeout=failsafe)
-            if round_end.is_set():
+            ended = round_end.wait(timeout=failsafe)
+            if ended:
                 continue
             # send failsafe
             for i in range(self.num_players):
@@ -33,12 +33,11 @@ class Timer:
                     eng_in.put([failsafe_action, player_id])
 
             # TIMEOUT
-            round_end.wait(timeout=timeout-failsafe)
-            if round_end.is_set():
-                continue
-            # timeout, continue w existing gamestate
-            print('Timeout')
-            round_end.set()
+            ended = round_end.wait(timeout=timeout-failsafe)
+            if not ended:
+                # timeout, continue w existing gamestate
+                print('Timeout')
+                round_end.set()
 
 
         # if not connect[0].is_set() and num_rounds >= 17 and num_rounds <= 20: 

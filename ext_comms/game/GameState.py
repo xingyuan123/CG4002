@@ -1,9 +1,7 @@
-import sys
 from Helper import ice_print_g as print
-from game.Helper import Action
 
 # has been modified from eval server GameState 
-# steps over visibility components
+# steps over visibility components for AI
 class GameState:
     def __init__(self):
         self.player_1 = Player()
@@ -16,45 +14,15 @@ class GameState:
         data = {'p1': self.player_1.get_dict(), 'p2': self.player_2.get_dict()}
         return data
 
-    def perform_action(self, action, player_id, position_1, position_2, does_not_have_visualizer):
+    def perform_action(self, action, player_id, can_see):
         """use the user sent action to alter the game state"""
-
-        # perform sanity check to see if our function handles all the actions
-        all_actions = {"gun", "shield", "bomb", "reload", "ironMan", "hulk", "captAmerica", "shangChi"}
-        if not Action.actions_match(all_actions):
-            print("All actions not handled by GameState.perform_action")
-            sys.exit(-1)
-
         if player_id == 1:
-            attacker            = self.player_1
-            opponent            = self.player_2
-            opponent_position   = position_2
+            attacker = self.player_1
+            opponent = self.player_2
         else:
-            attacker            = self.player_2
-            opponent            = self.player_1
-            opponent_position   = position_1
+            attacker = self.player_2
+            opponent = self.player_1
 
-        ######## To modify if visualiser is introduced
-        # # reduce the health of the opponent based on fire started by the attacker, in the previous moves
-        # # NOTE:
-        # # 1) Eval_server reduce the health of an opponent due to fire only if the attacker action is sent to eval server
-        # # 2) e.g. if P_1 walks into a fire started by P_2, if P_2 action timeout, P_1 will not have HP reduction
-        # if does_not_have_visualizer:
-        #     # this team has no concept of a fire damage
-        #     pass
-        # else:
-        #     attacker.fire_damage(opponent, opponent_position)
-
-        # # check if the players can see each other
-        # can_see = self._can_see (position_1, position_2)
-
-        # if does_not_have_visualizer:
-        #     # for bomb and AI actions we assume the opponent is always visible
-        #     if action in {"ironMan", "hulk", "captAmerica", "shangChi", "bomb"}:
-        #         can_see = True
-            
-        can_see = True
-        # perform the actual action
         if action == "gun":
             attacker.shoot(opponent, can_see)
         elif action == "shield":
@@ -62,7 +30,7 @@ class GameState:
         elif action == "reload":
             attacker.reload()
         elif action == "bomb":
-            attacker.bomb(opponent, opponent_position, can_see)
+            attacker.bomb(opponent, can_see)
         elif action in {"ironMan", "hulk", "captAmerica", "shangChi"}:
             # all these have the same behaviour
             attacker.harm_AI(opponent, can_see)
@@ -72,18 +40,6 @@ class GameState:
         else:
             # invalid action we do nothing
             pass
-
-
-    # @staticmethod
-    # def _can_see(position_1, position_2):
-    #     """check if the players can see each other"""
-    #     can_see = True
-    #     # the players cannot see each other only if one is quadrant 4 and other is in any other quadrant
-    #     if position_1 == 4 and position_2 != 4:
-    #         can_see = False
-    #     elif position_1 != 4 and position_2 == 4:
-    #         can_see = False
-    #     return can_see
         
     def fix_difference(self, recv_dict):
         """update our game state to the received state"""
@@ -134,25 +90,6 @@ class Player:
         data['shields']         = self.num_shield
         return data
 
-    # def get_difference(self, recv_dict):
-        # data = self.get_dict()
-        # for key in list(data.keys()):
-        #     val = data[key] - recv_dict[key]
-        #     if val == 0:
-        #         # there is no difference so we delete the element
-        #         data.pop(key)
-        #     else:
-        #         data[key] = val
-        # return data
-
-    # def set_state(self, bullets_remaining, bombs_remaining, hp, num_deaths, num_unused_shield, shield_health):
-    #     self.hp             = hp
-    #     self.num_bullets    = bullets_remaining
-    #     self.num_bombs      = bombs_remaining
-    #     self.hp_shield      = shield_health
-    #     self.num_shield     = num_unused_shield
-    #     self.num_deaths     = num_deaths
-    
     def set_state(self, data):
         self.hp             = data['hp']
         self.num_bullets    = data['bullets']
@@ -209,7 +146,7 @@ class Player:
             self.hp_shield = self.max_shield_health
             self.num_shield -= 1
 
-    def bomb(self, opponent, opponent_position, can_see):
+    def bomb(self, opponent, can_see):
         """Throw a bomb at opponent"""
         while True:
             # check the ammo
@@ -223,18 +160,7 @@ class Player:
                 break
 
             opponent.reduce_health(self.hp_bomb)
-            # start a fire in the quadrant of the opponent
-            self.fire_list.append(opponent_position)
             break
-
-    # def fire_damage(self, opponent, opponent_position):
-    #     """
-    #     whenever an opponent walks into a quadrant we need to reduce the health
-    #     based on the number of fires
-    #     """
-    #     for p in self.fire_list:
-    #         if p == opponent_position:
-    #             opponent.reduce_health(self.hp_fire)
 
     def harm_AI(self, opponent, can_see):
         """ We can harm am opponent based on our AI action if we can see them"""

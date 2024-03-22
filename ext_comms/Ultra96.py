@@ -30,6 +30,10 @@ async def main():
         1: Event(), 
         2: Event()
     }
+    is_shot = {
+        1: Event(), 
+        2: Event()
+    }
     connect = [Event() for _ in range(7)]
     if num_players == 1:
         # unused devices
@@ -70,13 +74,13 @@ async def main():
     await data_server.accept()
     
     # 1. TCP: Receive data from data client
-    data_recv  = Thread(target=data_server.recv_data_p, args=(action_done, ai_done, connect, data_in, eng_in,))
+    data_recv  = Thread(target=data_server.recv_data_p, args=(action_done, is_shot, ai_done, connect, data_in, eng_in,))
     
     # 2. AI generate action using data (dummy)
     ai_action  = Thread(target=ai.gen_action, args=(ai_done, data_in, eng_in, game_end,))
 
     # 3. Perform action: Updates game state, send to hardware & viz, eval server
-    eng_action = Thread(target=engine.perform_action, args=(eng_in, action_done, eval_out, viz_out, data_out,)) 
+    eng_action = Thread(target=engine.perform_action, args=(eng_in, action_done, is_shot, eval_out, viz_out, data_out,)) 
 
     # # 4. MQTT: Send to Visualiser
     # viz_send   = Thread(target=viz_client.send_to_broker, args=(viz_out,))
@@ -119,10 +123,13 @@ async def main():
             with queue.mutex:
                 queue.queue.clear()
         
-        # clear player done status after delay
+        # clear player done & shot status after delay
         sleep(2)
-        for player in action_done:
+        for player in range(1, num_players+1):
             action_done[player].clear()
+            is_shot[player].clear()
+        eval_client.sent.clear()
+        eval_client.received.clear()
 
         # if disconn is possible
         if num_rounds in range(18, min_rounds):
@@ -138,8 +145,6 @@ async def main():
 
         # start next round
         print_line()
-        eval_client.sent.clear()
-        eval_client.received.clear()
         round_end.clear()
 
     for thread in threads:

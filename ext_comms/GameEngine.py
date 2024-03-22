@@ -12,32 +12,37 @@ class GameEngine:
         self.num_players    = num_players
         self.does_not_have_visualizer = does_not_have_visualizer 
 
-    def perform_action(self, action_in: Queue, action_done, eval_q: Queue, viz_out: Queue, data_out: Queue):
+    def perform_action(self, action_in: Queue, action_done, is_shot, eval_q: Queue, viz_out: Queue, data_out: Queue):
         """use the user sent action to alter the game state"""
-        pos_1 = 1 
-        pos_2 = 2
         while True:
+            can_see = True
             # get action and calculate new game state
             action, player_id = action_in.get()
             print(f'Processing {action} by player {player_id}')
-            self.game_state.perform_action(action, player_id, pos_1, pos_2,
-                                          self.does_not_have_visualizer)
             action_done[player_id].set()
+            if action == 'gun':
+                opponent = 2 if player_id == 1 else 1
+                success = is_shot[opponent].wait(timeout=1) #!!! decrease timeout
+                if not success:
+                    can_see = False 
+            self.game_state.perform_action(action, player_id, can_see)
             game_state = self.get_game_state_dict()
+
             # send game state to hardware
             data_out.put(game_state)
-            # send player info to eval server and visualiser
+            # send player info to eval server
             player_info = {
                 'player_id': player_id, 
                 'action': action, 
                 'game_state': game_state
             }
             eval_q.put(player_info)
-            action = {
+            # send both to viz
+            viz_player_info = {
                 'player_id': player_id, 
                 'action': action
             }
-            viz_out.put(['player_info', action])
+            viz_out.put(['player_info', viz_player_info])
             viz_out.put(['game_state', game_state])
             
     def fix_game_state(self, game_state_in: Queue, viz_out: Queue, data_out: Queue):

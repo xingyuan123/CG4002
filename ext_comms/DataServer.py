@@ -57,7 +57,7 @@ class DataServer:
         self.conn, self.addr = await loop.sock_accept(self.socket)
         print('Client connected')
 
-    async def recv_data(self, action_done, ai_done: Event, connect, ai_q: Queue, eng_q: Queue):
+    async def recv_data(self, action_done, is_shot, ai_done: Event, connect, ai_q: Queue, eng_q: Queue):
         self.conn.setblocking(True)
         while True:
             ai_done.wait()
@@ -95,26 +95,28 @@ class DataServer:
                     connect[0].set()
                 continue
 
+            if device == 'VEST':
+                (health, shield) = data[1:]
+                print(f'P{player_id} hp: {health}, shield hp: {shield}')
+                is_shot[player_id].set()
+                continue
+
             # if player has already done action, do not process
             if action_done[player_id].is_set():
                 print(f'Player {player_id} has already done action. Skipping...')
                 continue
 
-            if device == 'VEST':
-                (health, shield) = data[1:]
-                print(f'P{player_id} hp: {health}, shield hp: {shield}')
-            elif device == 'GLOVE':
+            if device == 'GLOVE':
                 sensor_data = DataFrame(data[1])
                 print(f'P{player_id} glove data:\n{sensor_data}')
                 ai_q.put([sensor_data, player_id])
             elif device == 'GUN':
-                # check if opponent is hit in future!!
                 bullets = data[1]
                 print(f'P{player_id} bullets: {bullets}')
                 eng_q.put(['gun', player_id])
 
-    def recv_data_p(self, action_done, ai_done: Event, connect, ai_q: Queue, eng_q: Queue):
-        asyncio.run(self.recv_data(action_done, ai_done, connect, ai_q, eng_q))
+    def recv_data_p(self, action_done, is_shot, ai_done: Event, connect, ai_q: Queue, eng_q: Queue):
+        asyncio.run(self.recv_data(action_done, is_shot, ai_done, connect, ai_q, eng_q))
 
     def send_data(self, queue: Queue):
         while True:
