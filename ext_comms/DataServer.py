@@ -3,8 +3,8 @@ import socket
 import ast
 from pandas import DataFrame
 from queue import Queue
-from Helper import MsgHelper, ice_print_d as print, ice_print_x as alert
-from threading import Event
+from Helper import MsgHelper, Player, ice_print_d as print, ice_print_x as alert
+from typing import Dict
 
 def format_game_state(gs):
     return [
@@ -57,10 +57,9 @@ class DataServer:
         self.conn, self.addr = await loop.sock_accept(self.socket)
         print('Client connected')
 
-    async def recv_data(self, action_done, is_shot, ai_done: Event, connect, ai_q: Queue, eng_q: Queue):
+    async def recv_data(self, status: Dict[int, Player], connect, ai_q: Queue, eng_q: Queue):
         self.conn.setblocking(True)
         while True:
-            ai_done.wait()
             try:
                 _, data = self.msg.recv_text(self.conn)
             except:
@@ -72,51 +71,49 @@ class DataServer:
             data = ast.literal_eval(data)
             device_id = data[0]
             device, player_id = self.DEVICE_IDS[device_id]
+            player = status[player_id]
             print(f'Player: {player_id}, Device: {device}')
 
             # handle disconnect packets
-            if data[1] == 'D':
-                connect[device_id].clear()
-                connect[0].clear()
-                alert(f'PLAYER {player_id} {device} DISCONNECTED')
-                continue
-            if data[1] == 'C':
-                connect[device_id].set()
-                alert(f'PLAYER {player_id} {device} CONNECTED')
-                reconnected = True
-                for item in connect[1:]:
-                    if not item.is_set():
-                        alert(f'DEVICES STILL DISCONNECTED')
-                        reconnected = False
-                        break
-                # no devices disconnected
-                if reconnected:
-                    alert('All devices connected! :)')
-                    connect[0].set()
-                continue
+            if len(data) == 2:
+                if data[1] == 'D':
+                    connect[device_id].clear()
+                    connect[0].clear()
+                    alert(f'PLAYER {player_id} {device} DISCONNECTED')
+                    continue
+                if data[1] == 'C':
+                    connect[device_id].set()
+                    alert(f'PLAYER {player_id} {device} CONNECTED')
+                    reconnected = True
+                    for item in connect[1:]:
+                        if not item.is_set():
+                            alert(f'DEVICES STILL DISCONNECTED')
+                            reconnected = False
+                            break
+                    # no devices disconnected
+                    if reconnected:
+                        alert('All devices connected! :)')
+                        connect[0].set()
+                    continue
 
             if device == 'VEST':
-                (health, shield) = data[1:]
-                print(f'P{player_id} hp: {health}, shield hp: {shield}')
-                is_shot[player_id].set()
+                player.is_shot.set()
                 continue
-
+            
+            player.ai_done.wait()
             # if player has already done action, do not process
-            if action_done[player_id].is_set():
+            if player.action_done.is_set():
                 print(f'Player {player_id} has already done action. Skipping...')
                 continue
-
+            
             if device == 'GLOVE':
                 sensor_data = DataFrame(data[1])
-                print(f'P{player_id} glove data:\n{sensor_data}')
                 ai_q.put([sensor_data, player_id])
             elif device == 'GUN':
-                bullets = data[1]
-                print(f'P{player_id} bullets: {bullets}')
                 eng_q.put(['gun', player_id])
 
-    def recv_data_p(self, action_done, is_shot, ai_done: Event, connect, ai_q: Queue, eng_q: Queue):
-        asyncio.run(self.recv_data(action_done, is_shot, ai_done, connect, ai_q, eng_q))
+    def recv_data_p(self, status: Dict[int, Player], connect, ai_q: Queue, eng_q: Queue):
+        asyncio.run(self.recv_data(status, connect, ai_q, eng_q))
 
     def send_data(self, queue: Queue):
         while True:

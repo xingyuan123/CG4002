@@ -1,4 +1,4 @@
-from Helper import ice_print_g as print
+from Helper import ice_print_x as alert
 
 # has been modified from eval server GameState 
 # steps over visibility components for AI
@@ -45,11 +45,11 @@ class GameState:
         """update our game state to the received state"""
         is_different = False
         if self.player_1.get_dict()!=recv_dict['p1']:
-            print('[GAME] Diff in p1\n')
+            alert('[GAME] Diff in p1')
             self.player_1.set_state(recv_dict['p1'])
             is_different = True
         if self.player_2.get_dict()!=recv_dict['p2']:
-            print('[GAME] Diff in p2\n')
+            alert('[GAME] Diff in p2')
             self.player_2.set_state(recv_dict['p2'])
             is_different = True
         return is_different

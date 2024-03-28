@@ -1,31 +1,56 @@
 from queue import Queue
 from random import randint
 from time import sleep
-from threading import Event
-from Helper import ice_print_a as print, ice_print_x as alert
+from threading import Thread, Event
+from Helper import Player, ice_print_a as print, ice_print_x as alert
+from typing import Dict
 
 # attacks, shield, reload or shoot
 actions = ['bomb', 'captAmerica', 'hulk', 'idle', 'ironMan', 'logout', 'reload', 'shangChi', 'shield']
 
 class Dummy_AI: 
-    def gen_action(self, done: Event, queue_in: Queue, queue_out: Queue, end: Event):
-        print('AI running')
+    def gen_action(self, player_id, status: Dict[int, Player], queue_in: Queue, queue_out: Queue):
+        player = status[player_id]
+        opponent = status[2] if player_id == 1 else status[1]
+        print(f'AI thread for P{player_id} running')
+
         while True:
-            data, player_id = queue_in.get()
-            done.clear()
-            print(f'Got {data}')
+            data = queue_in.get()
+            # wait for bitstream to become free
+            opponent.ai_done.wait()
+            # start processing own action
+            player.ai_done.clear()
+            print(f'Got\n{data}')
             sleep(3) # temp
             action = actions[randint(0, 8)]
-            action = 'bomb'
             print(f'Generate {action} by player {player_id}')
 
             # handle idle action
             if action == 'idle':
                 alert('Idle received. Try again')
             # stop early logout
-            elif action == 'logout' and not end.is_set():
+            elif action == 'logout' and not self.end.is_set():
                 alert('Logout received early. Try again')
             else:
                 queue_out.put([action, player_id])
-            done.set()
+            player.ai_done.set()
+    
+    def run_ai(self, status: Dict[int, Player], queue_in: Queue, queue_out: Queue, end: Event):
+        self.end = end
+
+        p1_q = Queue()
+        p1   = Thread(target=self.gen_action, args=(1, status, p1_q, queue_out))
+        p1.start()
+
+        p2_q = Queue()
+        p2   = Thread(target=self.gen_action, args=(2, status, p2_q, queue_out))
+        p2.start()
+
+        while True:
+            data, player_id = queue_in.get()
+            if player_id == 1:
+                p1_q.put(data)
+            else:
+                p2_q.put(data)
+
             

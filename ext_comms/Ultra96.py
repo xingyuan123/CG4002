@@ -9,8 +9,8 @@ from GameEngine import GameEngine
 # from ai.MLP_wrapper import MLP as AI
 from dummy_AI import Dummy_AI as AI
 from Timer import Timer
-from Helper import MsgHelper
-from time import perf_counter, sleep
+from Helper import MsgHelper, Player
+from time import sleep
 
 def print_line():
     w, _ = shutil.get_terminal_size()
@@ -26,13 +26,9 @@ async def main():
     max_rounds = 30
     num_rounds = 0
 
-    action_done = {
-        1: Event(), 
-        2: Event()
-    }
-    is_shot = {
-        1: Event(), 
-        2: Event()
+    status = {
+        1: Player(1),
+        2: Player(2)
     }
     connect = [Event() for _ in range(7)]
     if num_players == 1:
@@ -43,8 +39,6 @@ async def main():
     disconnect = Event()
     round_end  = Event()
     game_end   = Event()
-    ai_done    = Event()
-    ai_done.set()
 
     msg_helper  = MsgHelper(password)
 
@@ -74,13 +68,14 @@ async def main():
     await data_server.accept()
     
     # 1. TCP: Receive data from data client
-    data_recv  = Thread(target=data_server.recv_data_p, args=(action_done, is_shot, ai_done, connect, data_in, eng_in,))
+    data_recv  = Thread(target=data_server.recv_data_p, args=(status, connect, data_in, eng_in,))
+    data_recv.daemon = True
     
     # 2. AI generate action using data (dummy)
-    ai_action  = Thread(target=ai.gen_action, args=(ai_done, data_in, eng_in, game_end,))
+    ai_action  = Thread(target=ai.run_ai, args=(status, data_in, eng_in, game_end,))
 
     # 3. Perform action: Updates game state, send to hardware & viz, eval server
-    eng_action = Thread(target=engine.perform_action, args=(eng_in, action_done, is_shot, eval_out, viz_out, data_out,)) 
+    eng_action = Thread(target=engine.perform_action, args=(eng_in, status, eval_out, viz_out, data_out,)) 
 
     # # 4. MQTT: Send to Visualiser
     # viz_send   = Thread(target=viz_client.send_to_broker, args=(viz_out,))
@@ -95,7 +90,7 @@ async def main():
     data_send  = Thread(target=data_server.send_data, args=(data_out,))
 
     # 8. Timer for failsafe actions, timeout
-    timing     = Thread(target=timer.start_timer, args=(round_end, disconnect, connect, action_done, eng_in,))
+    timing     = Thread(target=timer.start_timer, args=(round_end, disconnect, connect, status, eng_in,))
 
     queues  = [eng_in, eval_in, data_in, eval_out] # viz_out, data_out
     threads = [ai_action, eng_action, eval_conn, eng_fix, data_send, timing] # viz_send, 
@@ -109,6 +104,7 @@ async def main():
         with queue.mutex:
             queue.queue.clear()
     for thread in threads: 
+        thread.daemon = True
         thread.start()
     print('Starting game')
     print_line()
@@ -125,9 +121,9 @@ async def main():
         
         # clear player done & shot status after delay
         sleep(2)
-        for player in range(1, num_players+1):
-            action_done[player].clear()
-            is_shot[player].clear()
+        for player in status.values():
+            player.action_done.clear()
+            player.is_shot.clear()
         eval_client.sent.clear()
         eval_client.received.clear()
 

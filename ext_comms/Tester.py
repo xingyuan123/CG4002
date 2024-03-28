@@ -7,7 +7,7 @@ from GameEngine import GameEngine
 # from VizMqttClient import VizMqttClient
 # from ai.MLP_wrapper import MLP as AI
 from dummy_AI import Dummy_AI as AI
-from Helper import MsgHelper
+from Helper import MsgHelper, Player
 from time import sleep
 
 def print_line():
@@ -19,13 +19,9 @@ async def main():
     num_players = 2
     msg_helper  = MsgHelper(password)
 
-    action_done = {
-        1: Event(), 
-        2: Event()
-    }
-    is_shot = {
-        1: Event(), 
-        2: Event()
+    status = {
+        1: Player(1),
+        2: Player(2)
     }
     connect = [Event() for _ in range(7)]
     if num_players == 1:
@@ -35,8 +31,6 @@ async def main():
 
     round_end = Event()
     game_end  = Event()
-    ai_done   = Event()
-    ai_done.set()
 
     # Game Engine
     engine = GameEngine(num_players, does_not_have_visualizer=True)
@@ -46,7 +40,7 @@ async def main():
     # AI
     ai = AI()
 
-    # Visualiser
+    # # Visualiser
     # viz_client = VizMqttClient()
     viz_out = Queue()
 
@@ -57,13 +51,13 @@ async def main():
     await data_server.accept()
     
     # 1. TCP: Receive data from data client
-    data_recv  = Thread(target=data_server.recv_data_p, args=(action_done, is_shot, ai_done, connect, data_in, eng_in,))
+    data_recv  = Thread(target=data_server.recv_data_p, args=(status, connect, data_in, eng_in,))
     
     # 2. AI generate action using data (dummy)
-    ai_action  = Thread(target=ai.gen_action, args=(ai_done, data_in, eng_in, game_end,))
+    ai_action  = Thread(target=ai.run_ai, args=(status, data_in, eng_in, game_end,))
 
     # 3. Perform action: Updates game state, send to hardware & viz, eval server
-    eng_action = Thread(target=engine.perform_action, args=(eng_in, action_done, is_shot, eval_out, viz_out, data_out,)) 
+    eng_action = Thread(target=engine.perform_action, args=(eng_in, status, eval_out, viz_out, data_out,)) 
 
     # # 4. MQTT: Send to Visualiser
     # viz_send = Thread(target=viz_client.send_to_broker, args=(viz_out,))
@@ -75,6 +69,7 @@ async def main():
 
     print_line()
     for thread in threads: 
+        thread.daemon = True
         thread.start()
     
     while True:
@@ -83,9 +78,9 @@ async def main():
             data_out.put(data)
         round_end.set()
         sleep(2)
-        for player in range(1, num_players+1):
-            action_done[player].clear()
-            is_shot[player].clear()
+        for player in status.values():
+            player.action_done.clear()
+            player.is_shot.clear()
         
         # start next round
         print_line()

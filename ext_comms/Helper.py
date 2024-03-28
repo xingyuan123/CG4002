@@ -2,6 +2,9 @@ import base64
 import os
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
+from threading import Event
+
+logging = True
 
 def ice_print_x(arg):
     arg = '-ALERT- {}'.format(arg)
@@ -11,25 +14,29 @@ def ice_print_a(arg):
     arg = '[ AI ]: {}'.format(arg)
     ice_print(arg, color=8)
 
-def ice_print_g(arg):
-    arg = '[GAME]: {}'.format(arg)
-    ice_print(arg, color=2)
-
-def ice_print_e(arg):
-    arg = '[EVAL]: {}'.format(arg)
-    ice_print(arg, color=3)
-
-def ice_print_m(arg):
-    arg = '[MQTT]: {}'.format(arg)
-    ice_print(arg, color=5)
-
 def ice_print_d(arg):
     arg = '[DATA]: {}'.format(arg)
     ice_print(arg, color=6)
 
+def ice_print_g(arg):
+    if logging:
+        arg = '[GAME]: {}'.format(arg)
+        ice_print(arg, color=2)
+
+def ice_print_e(arg):
+    if logging:
+        arg = '[EVAL]: {}'.format(arg)
+        ice_print(arg, color=3)
+
+def ice_print_m(arg):
+    if logging:
+        arg = '[MQTT]: {}'.format(arg)
+        ice_print(arg, color=5)
+
 def ice_print_t(arg):
-    arg = '[TIME]: {}'.format(arg)
-    ice_print(arg, color=11)
+    if logging:
+        arg = '[TIME]: {}'.format(arg)
+        ice_print(arg, color=11)
 
 def ice_print(*arg, color=0, end='\n'):
     # ANSI colors
@@ -58,6 +65,14 @@ def ice_print(*arg, color=0, end='\n'):
         for a in arg:
             print(_c[color] + str(a) + _c[0], end=' ')
     print(end, end='')
+
+class Player:
+    def __init__(self, player_id):
+        self.player_id   = player_id
+        self.action_done = Event()
+        self.is_shot     = Event()
+        self.ai_done     = Event()
+        self.ai_done.set()
 
 class MsgHelper: 
     iv = os.urandom(16)

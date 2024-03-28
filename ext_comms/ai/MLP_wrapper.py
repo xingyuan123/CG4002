@@ -1,11 +1,15 @@
 from pynq import Overlay, allocate
-import pynq
 import numpy as np
-from queue import Queue
-from threading import Event
 from scipy.stats import skew, kurtosis
-from Helper import ice_print_a as print, ice_print_x as alert
 import pickle
+
+from threading import Thread, Event
+from queue import Queue
+from Helper import Player, ice_print_a as print, ice_print_x as alert
+from typing import Dict
+from pandas import DataFrame
+
+# disable warnings!!!
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -26,10 +30,18 @@ class MLP():
         self._load_scaler()
         self._load_normalizer()
     
-    def gen_action(self, done: Event, queue_in: Queue, queue_out: Queue, end: Event):
+    def gen_action(self, player_id, status: Dict[int, Player], queue_in: Queue, queue_out: Queue):
+        player = status[player_id]
+        opponent = status[2] if player_id == 1 else status[1]
+        print(f'AI thread for P{player_id} running')
+
         while True:
-            data, player_id = queue_in.get()
-            done.clear()
+            data = queue_in.get()
+            # wait for bitstream to become free
+            opponent.ai_done.wait()
+
+            # start processing own action
+            player.ai_done.clear()
             self.inputbuffer = allocate(shape=(54,), dtype=np.int32)
             self.outputbuffer = allocate(shape=(9,), dtype=np.int32)
             test_point = self.preprocess(data)
@@ -41,11 +53,29 @@ class MLP():
             if action == 'idle':
                 alert('Idle received. Try again')
             # stop early logout
-            elif action == 'logout' and not end.is_set():
+            elif action == 'logout' and not self.end.is_set():
                 alert('Logout received early. Try again')
             else:
                 queue_out.put([action, player_id])
-            done.set()
+            player.ai_done.set()
+    
+    def run_ai(self, status: Dict[int, Player], queue_in: Queue, queue_out: Queue, end: Event):
+        self.end = end
+        
+        p1_q = Queue()
+        p1   = Thread(target=self.gen_action, args=(1, status, p1_q, queue_out))
+        p1.start()
+
+        p2_q = Queue()
+        p2   = Thread(target=self.gen_action, args=(2, status, p2_q, queue_out))
+        p2.start()
+
+        while True:
+            data, player_id = queue_in.get()
+            if player_id == 1:
+                p1_q.put(data)
+            else:
+                p2_q.put(data)
 
     def preprocess(self, data):
         # data: dataframe of 6 columns and 86 rows
@@ -71,7 +101,6 @@ class MLP():
             f_max = abs(max(freq_domain))
             f_total_power = np.sum(np.abs(freq_domain) ** 2)
             processed_features += [t_mean, t_std_deviation, t_rms, t_skew, t_50_q, t_kurtosis, f_mean, f_max, f_total_power]
-        
         # processed features should have 54 values
         
         # scale and normalize based on training scaler and normalizer
@@ -87,10 +116,6 @@ class MLP():
         self.MLP_0.register_map.state = 1
         self.MLP_0.write(0x0, 0x81)
         test_point = test_point.tolist()
-        print(type(test_point))
-        print(test_point)
-        print(type(test_point[0]))
-        print(test_point[0])
         
         for i in range(54):
             self.inputbuffer[i] = int(test_point[0][i] *100000)
@@ -102,9 +127,7 @@ class MLP():
         # action map BOMB: 0 CAPT: 1 HULK: 2 IDLE: 3 IRONMAN: 4 LOGOUT: 5 RELOAD: 6 SHANGCHI: 7 SHIELD: 8
         output = self.outputbuffer
         output = output.tolist()
-        print(f"! action: {actions[output.index(max(output))]}")
         return output.index(max(output))
-
 
     def cleanup_inference(self):
         self.MLP_0.write(0x0, 0x0)
@@ -131,3 +154,10 @@ class MLP():
         self.MLP_0.register_map.CTRL.AP_START = 0
         del weightbuffer
 
+if __name__ == '__main__':
+    mlp = MLP()
+    glove_data = DataFrame([(-96, -1541, 211, 180, -18, -304), (5, -1336, 165, 188, -21, -357), (30, -889, 221, 205, 1, -404), (144, -422, 285, 189, -11, -380), (237, -136, 338, 167, -11, -322), (255, 93, 379, 73, -13, -284), (273, 392, 348, -7, 6, -207), (380, 558, 315, -58, 13, -132), (391, 542, 355, -110, 24, -18), (335, 261, 489, -165, 22, 120), (272, 115, 548, -208, 1, 157), (299, -339, 488, -172, -56, 295), (514, -1013, 327, -365, -94, 214), (496, -1168, 210, -359, -101, 142), (571, -1443, 41, -327, -128, 125), (619, -1495, -161, -260, -137, 87), (630, -1475, -302, -203, -95, 56), (632, -1312, -318, -111, -48, 46), (590, -1358, -306, 49, -91, 187), (463, -1570, -355, 268, 6, 189), (386, -848, 20, 212, 56, 80), (253, -605, 222, 227, 43, 144), (106, -568, 336, 291, -6, 256), (63, -769, 297, 329, 22, 300), (-65, -1450, 1056, 204, -36, 12), (66, -784, 372, 18, 30, -27), (297, 188, 299, -436, 134, -89), (-192, -658, 361, 8, -3, -40), (-6, -981, 171, -6, -1, -4), (0, -975, 199, -18, 1, 3), (-1, -974, 199, -11, 1, 0), (-5, -982, 189, -14, 1, 1), (-3, -979, 199, -13, 1, 0), (-4, -979, 196, -13, 1, 0), (-6, -979, 195, -13, 1, 0), (-3, -981, 197, -13, 1, 0), (-5, -982, 193, -13, 1, 0), (-5, -981, 192, -13, 1, 0), (-6, -982, 193, -13, 1, 0), (-3, -980, 193, -13, 1, 0), (-3, -980, 194, -13, 1, 0), (-5, -979, 195, -13, 1, 0), (-5, -982, 191, -13, 1, 0), (-4, -981, 196, -13, 1, 0), (-5, -980, 193, -13, 1, 0), (-5, -983, 192, -13, 1, 0), (-4, -981, 196, -13, 1, 0), (-4, -979, 193, -13, 1, 0), (-5, -980, 197, -13, 1, 0), (-2, -981, 196, -13, 1, 0), (-4, -979, 193, -13, 1, 0), (-4, -981, 193, -13, 1, 0), (-4, -979, 190, -13, 1, 0), (-5, -981, 193, -13, 1, 0), (-5, -978, 193, -13, 1, 0), (-3, -981, 193, -13, 1, 0), (-4, -981, 192, -13, 1, 0), (-3, -982, 192, -13, 1, 0), (-5, -981, 195, -13, 1, 0), (-5, -981, 192, -13, 1, 0), (-5, -981, 194, -13, 1, 0), (-5, -982, 193, -13, 1, 0), (-5, -981, 193, -13, 1, 0), (-4, -980, 196, -13, 1, 0), (-5, -982, 194, -13, 1, 0), (-5, -980, 192, -13, 1, 0), (-6, -981, 193, -13, 1, 0), (-5, -980, 195, -13, 1, 0), (-3, -981, 193, -13, 1, 0), (-5, -979, 196, -13, 1, 0), (-4, -981, 192, -13, 1, 0), (-4, -981, 190, -13, 1, 0), (-5, -983, 191, -13, 1, 0), (-5, -980, 196, -13, 1, 0), (-4, -982, 195, -13, 1, 0), (-4, -982, 194, -13, 1, 0), (-5, -981, 193, -13, 1, 0), (-4, -981, 195, -13, 1, 0), (-5, -981, 193, -13, 1, 0), (-2, -981, 193, -13, 1, 0), (-6, -982, 191, -13, 1, 0), (-6, -981, 192, -13, 1, 0), (-5, -981, 193, -13, 1, 0), (-4, -982, 191, -13, 1, 0), (-5, -979, 194, -13, 1, 0), (-3, -982, 192, -13, 1, 0)])
+    test_point = mlp.preprocess(glove_data)
+    action = actions[mlp.inference(test_point)]
+    mlp.cleanup_inference()
+    print(f'Generate {action}')
