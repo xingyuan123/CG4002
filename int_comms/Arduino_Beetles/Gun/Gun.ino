@@ -83,6 +83,7 @@ void loop() {
           digitalWrite(IR_TRANSMITTER_PIN, LOW);
           digitalWrite(BUZZER_PIN, HIGH);
         }
+        stopAndWait = true;
         lastShotTime = millis();  // Update last shot time
       }
     }
