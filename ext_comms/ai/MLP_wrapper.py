@@ -21,12 +21,8 @@ class MLP():
         self.dma_send = ol.axi_dma_0.sendchannel
         self.dma_recv = ol.axi_dma_0.recvchannel
         self.MLP_0 = ol.MLP_0
-
-        self.inputbuffer = allocate(shape=(54,), dtype=np.int32)
-        self.outputbuffer = allocate(shape=(9,), dtype=np.int32)
-
-        self._load_weights_and_bias()
         
+        self._load_weights_and_bias()
         self._load_scaler()
         self._load_normalizer()
     
@@ -36,14 +32,15 @@ class MLP():
         print(f'AI thread for P{player_id} running')
 
         while True:
+            self.inputbuffer = allocate(shape=(54,), dtype=np.int32)
+            self.outputbuffer = allocate(shape=(9,), dtype=np.int32)
+
             data = queue_in.get()
             # wait for bitstream to become free
             opponent.ai_done.wait()
 
             # start processing own action
             player.ai_done.clear()
-            self.inputbuffer = allocate(shape=(54,), dtype=np.int32)
-            self.outputbuffer = allocate(shape=(9,), dtype=np.int32)
             test_point = self.preprocess(data)
             action = actions[self.inference(test_point)]
             self.cleanup_inference()
