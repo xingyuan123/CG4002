@@ -125,6 +125,7 @@ void handleData() {
         break;
       case 'P':
         stopAndWait = false;
+        updateSequenceId();
         break;
       default:
         reset();
@@ -148,7 +149,6 @@ void sendSensorReadings() {
   dataPacket.sequenceId = sequenceId;
   dataPacket.crc = calculateCRC(&dataPacket);
   sendPacket(&dataPacket);
-  updateSequenceId();
 }
 
 void updateSequenceId() {
