@@ -2,10 +2,10 @@ import csv
 
 from colorama import Fore
 
-from Delegates.MyDelegate import MyDelegate
-from Settings.Config import READING_COUNT, CSV, ACC_THRESHOLD, GYRO_THRESHOLD, WAITING_COUNT
-from Settings.Constants import WINDOW_SIZE, GLOVE_READING_INDICES
-from Utils import get_signed_int
+from int_comms.Communications.Delegates.MyDelegate import MyDelegate
+from int_comms.Communications.Settings.Config import READING_COUNT, ACC_THRESHOLD, GYRO_THRESHOLD, CSV, WAITING_COUNT
+from int_comms.Communications.Settings.Constants import GLOVE_READING_INDICES, WINDOW_SIZE
+from int_comms.Communications.Utils import get_signed_int
 
 
 class GloveDelegate(MyDelegate):

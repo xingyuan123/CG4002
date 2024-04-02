@@ -1,9 +1,9 @@
 from bluepy.btle import DefaultDelegate
 from colorama import Fore
 
-from Settings.Config import CHECKSUM_FAIL_THRESHOLD
-from Settings.Constants import BYTES_RECEIVED, FRAGMENTED_PACKETS, PACKET_SIZE
-from Utils import send_acknowledgement, send_hello, checksum_fail
+from int_comms.Communications.Settings.Config import CHECKSUM_FAIL_THRESHOLD
+from int_comms.Communications.Settings.Constants import BYTES_RECEIVED, PACKET_SIZE, FRAGMENTED_PACKETS
+from int_comms.Communications.Utils import checksum_fail, send_hello, send_acknowledgement
 
 
 class MyDelegate(DefaultDelegate):

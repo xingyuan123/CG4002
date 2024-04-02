@@ -2,8 +2,8 @@ import ast
 import socket
 from queue import Queue
 
-from Server.MsgHelper import MsgHelper
-from Settings.Constants import EVAL_SERVER_PASSWORD
+from int_comms.Communications.Server.MsgHelper import MsgHelper
+from int_comms.Communications.Settings.Constants import EVAL_SERVER_PASSWORD
 
 
 class DataClient:

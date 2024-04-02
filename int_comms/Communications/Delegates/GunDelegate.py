@@ -1,7 +1,7 @@
 import struct
 
-from Delegates.MyDelegate import MyDelegate
-from Utils import calculate_crc, int_to_bytes, send_proceed
+from int_comms.Communications.Delegates.MyDelegate import MyDelegate
+from int_comms.Communications.Utils import send_proceed, int_to_bytes, calculate_crc
 
 
 class GunDelegate(MyDelegate):
