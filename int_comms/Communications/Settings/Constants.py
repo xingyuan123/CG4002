@@ -14,7 +14,7 @@ DEVICE_ADDRESSES = {
     'GUN_1': '0C:B2:B7:1E:49:9E',
     'VEST_2': 'F4:B8:5E:42:6D:20',
     'GLOVE_2': '',
-    'GUN_2': '',
+    'GUN_2': 'F4:B8:5E:42:61:4E',
 }
 
 DEVICE_IDS = {
