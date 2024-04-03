@@ -9,15 +9,15 @@
 #define LED_CLK 3
 #define LED_IO 2
 #define BUTTON_PIN A1
+#define SHOT_COMMAND 0x33  // || Player 1: 0x34 || Player 2: 0x33 ||
 
 // Declarations //
 TM1637Display display(LED_CLK, LED_IO);
 byte receivingBuffer[20];
-const int DEVICE_ID = 3;                   // || Player 1: 3 || Player 2: 6 ||
+const int DEVICE_ID = 6;                   // || Player 1: 3 || Player 2: 6 ||
 const unsigned long cooldownPeriod = 500;  // Cooldown: 0.5s
 const unsigned long buttonPressThreshold = 30;
 unsigned long lastShotTime = 0;
-uint8_t sCommand = 0x34;  // || Player 1: 0x34 || Player 2: 0x33 ||
 uint8_t sRepeats = 0;
 bool handshakeCompleted = false;
 bool stopAndWait = false;
@@ -75,7 +75,7 @@ void loop() {
       // Check if button pressed and cooldown period elapsed
       if (buttonPressCounter > buttonPressThreshold && millis() - lastShotTime >= cooldownPeriod) {
         if (bullets > 0) {
-          IrSender.sendNEC(0x0102, 0x34, 0);  // Transmit IR signal
+          IrSender.sendNEC(0x0102, SHOT_COMMAND, 0);  // Transmit IR signal
           digitalWrite(BUZZER_PIN, LOW);      // Turn on the buzzer
           bullets--;                          // Decrease bullets remaining
           display.showNumberDec(bullets, false);
