@@ -9,11 +9,11 @@ PACKET_SIZE = 20
 GLOVE_READING_INDICES = indices = [2, 4, 6, 8, 10, 12]  # Indices for accX, accY, accZ, gyroX, gyroY, gyroZ
 
 DEVICE_ADDRESSES = {
-    'VEST_1': '',
+    'VEST_1': 'F4:B8:5E:42:5B:AF',
     'GLOVE_1': '0C:B2:B7:1E:49:AD',
     'GUN_1': '0C:B2:B7:1E:49:9E',
     'VEST_2': 'F4:B8:5E:42:6D:20',
-    'GLOVE_2': '',
+    'GLOVE_2': 'F4:B8:5E:42:61:61',
     'GUN_2': 'F4:B8:5E:42:61:4E',
 }
 
