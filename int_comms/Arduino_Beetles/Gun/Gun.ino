@@ -66,7 +66,7 @@ void loop() {
       delay(100);            // Resend every 0.1s
     } else {
       // Check if the button is pressed and debounce it
-      if (analogRead(BUTTON_PIN) > 1022) {
+      if (analogRead(BUTTON_PIN) > 1020) {
         buttonPressCounter++;
       } else {
         buttonPressCounter = 0;
