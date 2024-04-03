@@ -1,6 +1,7 @@
 import struct
 
 from int_comms.Communications.Delegates.MyDelegate import MyDelegate
+from int_comms.Communications.Settings.Constants import DEVICE_IDS
 from int_comms.Communications.Utils import send_proceed, calculate_crc, int_to_bytes
 
 
@@ -17,7 +18,14 @@ class VestDelegate(MyDelegate):
         send_proceed(self.characteristic)
 
     def handle_server_data(self, server_data):  # Override
-        data_packet = b'D' + int_to_bytes(self.device_id) + b'\x00' * 17
+        data_packet = b'D' + int_to_bytes(self.device_id)
+        if self.device_id == DEVICE_IDS['VEST_1']:
+            data_packet += int_to_bytes(server_data[0])  # Health
+            data_packet += int_to_bytes(server_data[2])  # Shield
+        elif self.device_id == DEVICE_IDS['VEST_2']:
+            data_packet += int_to_bytes(server_data[3])  # Health
+            data_packet += int_to_bytes(server_data[5])  # Shield
+        data_packet += b'\x00' * 15
         crc = calculate_crc(data_packet)
         data_packet += bytes([crc])
         self.characteristic.write(data_packet)
