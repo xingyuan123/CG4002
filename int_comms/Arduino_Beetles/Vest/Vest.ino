@@ -9,14 +9,15 @@
 #define VIBRATION_PIN 5
 #define LED_COUNT 24
 #define DECODE_NEC         // Includes Apple and Onkyo
-#define SHOT_COMMAND 0x34  // Distinguish between teams
+#define SHOT_COMMAND 0x33  // || Player 1: 0x33 || Player 2: 0x34 ||
 #define MAX_HEALTH 100
+#define MAX_SHIELD 30
 
 // Declarations //
 Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
 decode_results results;
 byte receivingBuffer[20];
-const int DEVICE_ID = 4;                     // || Player 1: 1 || Player 2: 4 ||
+const int DEVICE_ID = 1;                     // || Player 1: 1 || Player 2: 4 ||
 const unsigned long signalThreshold = 1000;  // Time threshold (in milliseconds) for detecting consecutive signals
 unsigned long lastSignalTime = 0;            // Variable to store the time of the last received signal
 bool handshakeCompleted = false;
@@ -24,6 +25,7 @@ bool stopAndWait = false;
 int firstPin = 2;
 int lastPin = 22;
 int health = MAX_HEALTH;
+int shield = 0;
 int sequenceId = 0;
 
 // Packet Types //
@@ -108,6 +110,7 @@ void handleData() {
         break;
       case 'D':
         health = receivingBuffer[2];
+        shield = receivingBuffer[3];
         triggerVibration();
         triggerLEDFlash();
         break;
@@ -153,14 +156,31 @@ void triggerVibration() {
 }
 
 void triggerLEDFlash() {
-  if (health < 0) {
+  if (health < 0) { // Dead, respawn
     health = MAX_HEALTH;
     for (int i = firstPin; i < lastPin; i++) {
       strip.setPixelColor(i, strip.Color(0, 255, 0));
       strip.show();
       delay(100);
     }
-  } else {
+  } else if (shield > 0) { // Shield is active
+    // Flash red
+    for (int i = firstPin; i < lastPin; i++) {
+      if (i < firstPin + (shield / 5)) {
+        strip.setPixelColor(i, strip.Color(255, 0, 0));
+      } else {
+        strip.setPixelColor(i, strip.Color(0, 0, 0));
+      }
+    }
+    // Back to green
+    strip.show();
+    delay(300);
+    for (int i = firstPin; i < firstPin + (shield / 5); i++) {
+      strip.setPixelColor(i, strip.Color(255, 255, 0));
+    }
+    strip.show();
+    delay(300);
+  } else { // Shield not active
     // Flash red
     for (int i = firstPin; i < lastPin; i++) {
       if (i < firstPin + (health / 5)) {
