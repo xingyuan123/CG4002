@@ -22,6 +22,9 @@ class GloveDelegate(MyDelegate):
         self.onset_buffer.append(sensor_reading)
         self.update_onset_buffer(sensor_reading)
 
+    def handle_server_data(self, server_data):  # Override
+        pass
+
     def reset(self):  # Override
         super().reset()
         self.is_logging = False
