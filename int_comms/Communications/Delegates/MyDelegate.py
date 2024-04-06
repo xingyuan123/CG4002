@@ -52,6 +52,7 @@ class MyDelegate(DefaultDelegate):
     def initialize_handshake(self):
         self.reset()
         send_hello(self.characteristic)
+        self.data_out.put(str([self.device_id, 'D']))
         print(self.color + f'<Device {self.device_id}> Initialized handshake.' + Fore.RESET)
 
     def complete_handshake(self):
