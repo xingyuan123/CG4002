@@ -7,6 +7,7 @@ from EvalClient import EvalClient
 from GameEngine import GameEngine
 # from VizMqttClient import VizMqttClient
 # from ai.MLP_wrapper import MLP as AI
+# from test_ai.test_wrapper import test_AI as AI
 from dummy_AI import Dummy_AI as AI
 from Timer import Timer
 from Helper import MsgHelper, Player
@@ -17,14 +18,11 @@ def print_line():
     print('='*w)
     
 async def main():
-    port = int(input('port: '))
-    # port = 8888
     password    = '1234567890123456'
     num_players = 2
 
     min_rounds = 21
     max_rounds = 30
-    num_rounds = 0
 
     status = {
         1: Player(1),
@@ -51,7 +49,7 @@ async def main():
     ai = AI()
 
     # Eval Client
-    eval_client = EvalClient(num_players, msg_helper, port)
+    eval_client = EvalClient(num_players, msg_helper)
     eval_out = Queue()
 
     # # Visualiser
@@ -93,11 +91,14 @@ async def main():
     timing     = Thread(target=timer.start_timer, args=(round_end, disconnect, connect, status, eng_in,))
 
     queues  = [eng_in, eval_in, data_in, eval_out] # viz_out, data_out
-    threads = [ai_action, eng_action, eval_conn, eng_fix, data_send, timing] # viz_send, 
+    threads = [ai_action, eng_action, eval_conn, eng_fix, data_send, timing] #, viz_send]
 
     # receive initial connect packets
     data_recv.start()
     connect[0].wait()
+
+    # connect to eval server
+    eval_client.start()
 
     # initialise
     for queue in queues:
@@ -106,12 +107,14 @@ async def main():
     for thread in threads: 
         thread.daemon = True
         thread.start()
+    
     print('Starting game')
     print_line()
     while True:
         # at end of every round
         round_end.wait()
-        num_rounds += 1
+        eval_client.received.set()
+        num_rounds = eval_client.num_rounds
         print(f'Number of rounds: {num_rounds}')
 
         # clear queues to prep for next round
@@ -127,8 +130,9 @@ async def main():
         eval_client.sent.clear()
         eval_client.received.clear()
 
-        # if disconn is possible
-        if num_rounds in range(18, min_rounds):
+        # if disconn is possible (! configured for 2p)
+        # round 12 (p1), round 19/20 (p1 & p2)
+        if num_rounds in [12, 19, 20]:
             disconnect.set()
         else:
             disconnect.clear()

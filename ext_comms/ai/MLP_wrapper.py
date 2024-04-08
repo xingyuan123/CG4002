@@ -32,14 +32,13 @@ class MLP():
         print(f'AI thread for P{player_id} running')
 
         while True:
-            self.inputbuffer = allocate(shape=(54,), dtype=np.int32)
-            self.outputbuffer = allocate(shape=(9,), dtype=np.int32)
-
-            data = queue_in.get()
             # wait for bitstream to become free
             opponent.ai_done.wait()
-
+            self.inputbuffer = allocate(shape=(54,), dtype=np.int32)
+            self.outputbuffer = allocate(shape=(9,), dtype=np.int32)
+            
             # start processing own action
+            data = queue_in.get()
             player.ai_done.clear()
             test_point = self.preprocess(data)
             action = actions[self.inference(test_point)]

@@ -7,36 +7,36 @@ from threading import Event
 logging = True
 
 def ice_print_x(arg):
-    arg = '-ALERT- {}'.format(arg)
+    arg = 'ALERT! {}'.format(arg)
     ice_print(arg, color=1)
 
 def ice_print_a(arg):
-    arg = '[ AI ]: {}'.format(arg)
+    arg = '[ AI ] {}'.format(arg)
     ice_print(arg, color=8)
 
 def ice_print_d(arg):
-    arg = '[DATA]: {}'.format(arg)
+    arg = '[DATA] {}'.format(arg)
     ice_print(arg, color=6)
+
+def ice_print_t(arg):
+    arg = '[TIME] {}'.format(arg)
+    ice_print(arg, color=11)
 
 def ice_print_g(arg):
     if logging:
-        arg = '[GAME]: {}'.format(arg)
+        arg = '[GAME] {}'.format(arg)
         ice_print(arg, color=2)
 
 def ice_print_e(arg):
     if logging:
-        arg = '[EVAL]: {}'.format(arg)
+        arg = '[EVAL] {}'.format(arg)
         ice_print(arg, color=3)
 
 def ice_print_m(arg):
+    return
     if logging:
-        arg = '[MQTT]: {}'.format(arg)
+        arg = '[MQTT] {}'.format(arg)
         ice_print(arg, color=5)
-
-def ice_print_t(arg):
-    if logging:
-        arg = '[TIME]: {}'.format(arg)
-        ice_print(arg, color=11)
 
 def ice_print(*arg, color=0, end='\n'):
     # ANSI colors

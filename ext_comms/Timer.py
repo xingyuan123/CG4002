@@ -38,23 +38,3 @@ class Timer:
                 # timeout, continue w existing gamestate
                 print('Timeout')
                 round_end.set()
-
-
-        # if not connect[0].is_set() and num_rounds >= 17 and num_rounds <= 20: 
-        #     # ignore timeout for disconn round
-        #     start_time = perf_counter()
-        # # send failsafe only if no response from hardware
-        # if not failsafe_sent and time > failsafe and ai_done.is_set() and not eval_client.sent.is_set(): # !!!
-        #     if not connect[3].is_set():
-        #         failsafe_action = 'gun'
-        #     else:
-        #         failsafe_action = 'hulk'
-        #     print(f'Failsafe: Sending {failsafe_action}')
-        #     for i in range(num_players):
-        #         player_id = i+1
-        #         eng_in.put([failsafe_action, player_id])
-        #     failsafe_sent = True
-        # # server timeout
-        # if time > timeout:
-        #     round_end.set()
-        #     
