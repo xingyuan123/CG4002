@@ -1,5 +1,5 @@
 # Setup
-SERVER = True
+SERVER = False
 ULTRA_96 = True
 SERVER_IP = '172.25.109.141'
 SERVER_PORT = 54121
