@@ -7,10 +7,9 @@ class GameEngine:
     Class that will keep track of the game state and evaluate all actions.
     Modified from eval server's GameSimulator.py. 
     """
-    def __init__(self, num_players, does_not_have_visualizer):
+    def __init__(self, num_players):
         self.game_state     = GameState()
         self.num_players    = num_players
-        self.does_not_have_visualizer = does_not_have_visualizer 
 
     def perform_action(self, status: Status, action_in: Queue, viz_out: Queue, data_out: Queue, eval_q=None):
         """use the user sent action to alter the game state"""

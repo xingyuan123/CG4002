@@ -15,6 +15,13 @@ def format_game_state(gs):
         gs['p2']['shield_hp']
     ]
 
+def format_device_status(player_id, device, status):
+    return str({
+        'player_id': player_id, 
+        'device'   : device, 
+        'status'   : status
+    })
+
 class DataServer:
     """
     Class that communicates with 
@@ -56,7 +63,7 @@ class DataServer:
         self.conn, self.addr = await loop.sock_accept(self.socket)
         print('Client connected')
 
-    async def recv_data(self, status: Status, ai_q: Queue, eng_q: Queue):
+    async def recv_data(self, status: Status, ai_q: Queue, eng_q: Queue, viz_out: Queue):
         self.conn.setblocking(True)
         while True:
             try:
@@ -79,10 +86,12 @@ class DataServer:
                     status.connect[device_id].clear()
                     status.connect[0].clear()
                     alert(f'PLAYER {player_id} {device} DISCONNECTED')
+                    viz_out.put(['device_status', format_device_status(player_id, device, 'D')])
                     continue
                 if data[1] == 'C':
                     status.connect[device_id].set()
                     alert(f'PLAYER {player_id} {device} CONNECTED')
+                    viz_out.put(['device_status', format_device_status(player_id, device, 'C')])
                     reconnected = True
                     for item in status.connect[1:]:
                         if not item.is_set():
@@ -111,8 +120,8 @@ class DataServer:
             elif device == 'GUN':
                 eng_q.put(['gun', player_id])
 
-    def recv_data_p(self, status: Status, ai_q: Queue, eng_q: Queue):
-        asyncio.run(self.recv_data(status, ai_q, eng_q))
+    def recv_data_p(self, status: Status, ai_q: Queue, eng_q: Queue, viz_out: Queue):
+        asyncio.run(self.recv_data(status, ai_q, eng_q, viz_out))
 
     def send_data(self, queue: Queue):
         while True:

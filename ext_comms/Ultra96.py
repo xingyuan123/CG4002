@@ -25,7 +25,7 @@ async def main():
     msg_helper  = MsgHelper(password)
 
     # Game Engine
-    engine = GameEngine(num_players, does_not_have_visualizer=True)
+    engine = GameEngine(num_players)
     eng_in = Queue()
     eval_in = Queue()
 
