@@ -6,8 +6,9 @@ from DataServer import DataServer
 from GameEngine import GameEngine
 # from VizMqttClient import VizMqttClient
 # from ai.MLP_wrapper import MLP as AI
-from dummy_AI import Dummy_AI as AI
-from Helper import MsgHelper, Player
+# from dummy_AI import Dummy_AI as AI
+from test_ai.test_wrapper import test_AI as AI
+from Helper import Status, MsgHelper
 from time import sleep
 
 def print_line():
@@ -17,20 +18,9 @@ def print_line():
 async def main():
     password    = '1234567890123456'
     num_players = 2
+
+    status      = Status(num_players)
     msg_helper  = MsgHelper(password)
-
-    status = {
-        1: Player(1),
-        2: Player(2)
-    }
-    connect = [Event() for _ in range(7)]
-    if num_players == 1:
-        # unused devices
-        for i in [1, 5, 6]:
-            connect[i].set()
-
-    round_end = Event()
-    game_end  = Event()
 
     # Game Engine
     engine = GameEngine(num_players, does_not_have_visualizer=True)
@@ -51,13 +41,13 @@ async def main():
     await data_server.accept()
     
     # 1. TCP: Receive data from data client
-    data_recv  = Thread(target=data_server.recv_data_p, args=(status, connect, data_in, eng_in,))
+    data_recv  = Thread(target=data_server.recv_data_p, args=(status, data_in, eng_in,))
     
     # 2. AI generate action using data (dummy)
-    ai_action  = Thread(target=ai.run_ai, args=(status, data_in, eng_in, game_end,))
+    ai_action  = Thread(target=ai.run_ai, args=(status, data_in, eng_in,))
 
     # 3. Perform action: Updates game state, send to hardware & viz, eval server
-    eng_action = Thread(target=engine.perform_action, args=(eng_in, status, eval_out, viz_out, data_out,)) 
+    eng_action = Thread(target=engine.perform_action, args=(eng_in, status.players, eval_out, viz_out, data_out,)) 
 
     # # 4. MQTT: Send to Visualiser
     # viz_send = Thread(target=viz_client.send_to_broker, args=(viz_out,))
@@ -76,15 +66,15 @@ async def main():
         for _ in range(num_players):
             data = eval_out.get()['game_state']
             data_out.put(data)
-        round_end.set()
+        status.round_end.set()
         sleep(2)
-        for player in status.values():
+        for player in status.players.values():
             player.action_done.clear()
             player.is_shot.clear()
         
         # start next round
         print_line()
-        round_end.clear()
+        status.round_end.clear()
 
 if __name__ == "__main__":
     print('Initialising Ultra96')

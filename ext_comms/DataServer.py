@@ -3,8 +3,7 @@ import socket
 import ast
 from pandas import DataFrame
 from queue import Queue
-from Helper import MsgHelper, Player, ice_print_d as print, ice_print_x as alert
-from typing import Dict
+from Helper import MsgHelper, Status, ice_print_d as print, ice_print_x as alert
 
 def format_game_state(gs):
     return [
@@ -57,7 +56,7 @@ class DataServer:
         self.conn, self.addr = await loop.sock_accept(self.socket)
         print('Client connected')
 
-    async def recv_data(self, status: Dict[int, Player], connect, ai_q: Queue, eng_q: Queue):
+    async def recv_data(self, status: Status, ai_q: Queue, eng_q: Queue):
         self.conn.setblocking(True)
         while True:
             try:
@@ -71,21 +70,21 @@ class DataServer:
             data = ast.literal_eval(data)
             device_id = data[0]
             device, player_id = self.DEVICE_IDS[device_id]
-            player = status[player_id]
+            player = status.players[player_id]
             print(f'Player: {player_id}, Device: {device}')
 
             # handle disconnect packets
             if len(data) == 2:
                 if data[1] == 'D':
-                    connect[device_id].clear()
-                    connect[0].clear()
+                    status.connect[device_id].clear()
+                    status.connect[0].clear()
                     alert(f'PLAYER {player_id} {device} DISCONNECTED')
                     continue
                 if data[1] == 'C':
-                    connect[device_id].set()
+                    status.connect[device_id].set()
                     alert(f'PLAYER {player_id} {device} CONNECTED')
                     reconnected = True
-                    for item in connect[1:]:
+                    for item in status.connect[1:]:
                         if not item.is_set():
                             alert(f'DEVICES STILL DISCONNECTED')
                             reconnected = False
@@ -93,7 +92,7 @@ class DataServer:
                     # no devices disconnected
                     if reconnected:
                         alert('All devices connected! :)')
-                        connect[0].set()
+                        status.connect[0].set()
                     continue
 
             if device == 'VEST':
@@ -112,8 +111,8 @@ class DataServer:
             elif device == 'GUN':
                 eng_q.put(['gun', player_id])
 
-    def recv_data_p(self, status: Dict[int, Player], connect, ai_q: Queue, eng_q: Queue):
-        asyncio.run(self.recv_data(status, connect, ai_q, eng_q))
+    def recv_data_p(self, status: Status, ai_q: Queue, eng_q: Queue):
+        asyncio.run(self.recv_data(status, ai_q, eng_q))
 
     def send_data(self, queue: Queue):
         while True:

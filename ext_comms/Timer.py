@@ -1,7 +1,5 @@
-from threading import Event
 from queue import Queue
-from Helper import Player, ice_print_t as print
-from typing import Dict
+from Helper import Status, ice_print_t as print
 
 failsafe_ai = 'hulk'
 failsafe_gun = 'gun'
@@ -10,7 +8,12 @@ class Timer:
     def __init__(self, num_players):
         self.num_players = num_players
 
-    def start_timer(self, round_end: Event, disconnect: Event, connect, status: Dict[int, Player], eng_in: Queue):
+    def start_timer(self, status: Status, eng_in: Queue):
+        round_end  = status.round_end
+        disconnect = status.disconnect
+        connect    = status.connect
+        players    = status.players
+
         failsafe = 45 # time before random ai action is generated
         timeout  = 60 # timeout for eval server = 60s
         while True:
@@ -24,7 +27,7 @@ class Timer:
             if ended:
                 continue
             # send failsafe if player has not done action yet
-            for player in status.values():
+            for player in players.values():
                 if not player.action_done.is_set():
                     player_id = player.player_id
                     gun_connected = connect[player_id*3].is_set()
@@ -37,4 +40,4 @@ class Timer:
             if not ended:
                 # timeout, continue w existing gamestate
                 print('Timeout')
-                round_end.set()
+                status.inc_rounds()

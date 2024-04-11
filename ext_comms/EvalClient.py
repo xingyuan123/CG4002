@@ -2,13 +2,12 @@ import socket
 import json
 from queue import Queue
 from threading import Thread, Event
-from Helper import MsgHelper, ice_print_e as print
+from Helper import MsgHelper, Status, ice_print_e as print
 
 conn = socket.socket()
 
 class EvalClient: 
     def __init__(self, num_players, msg: MsgHelper): 
-        self.num_rounds  = 0
         self.num_players = num_players
         self.msg         = msg
         self.sent        = Event()
@@ -44,7 +43,7 @@ class EvalClient:
                 # retry if not received
                 if received: break
 
-    def recv(self, eval_in: Queue):
+    def recv(self, eval_in: Queue, status: Status):
         while True:
             for _ in range(self.num_players):
                 # recv correct game state
@@ -52,12 +51,12 @@ class EvalClient:
                 if self.success:
                     print(f'Receive data: {recv}')
                     eval_in.put(json.loads(recv))
-            self.num_rounds += 1
+            status.inc_rounds()
             self.received.set()
             
-    def conn_eval_server(self, eval_out: Queue, eval_in: Queue, round_end: Event):
+    def conn_eval_server(self, eval_out: Queue, eval_in: Queue, status: Status):
         send_thread = Thread(target=self.send, args=(eval_out,))
-        recv_thread = Thread(target=self.recv, args=(eval_in,))
+        recv_thread = Thread(target=self.recv, args=(eval_in, status))
 
         send_thread.start()
         recv_thread.start()
@@ -66,7 +65,6 @@ class EvalClient:
             self.sent.wait()
             self.received.wait()
             print('Sent and received')
-            round_end.set()
             self.sent.clear()
             self.received.clear()
         

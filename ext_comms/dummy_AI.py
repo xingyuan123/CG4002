@@ -1,23 +1,24 @@
 from queue import Queue
 from random import randint
 from time import sleep
-from threading import Thread, Event
-from Helper import Player, ice_print_a as print, ice_print_x as alert
-from typing import Dict
+from threading import Thread
+from Helper import Status, ice_print_a as print, ice_print_x as alert
 
 # attacks, shield, reload or shoot
 actions = ['bomb', 'captAmerica', 'hulk', 'idle', 'ironMan', 'logout', 'reload', 'shangChi', 'shield']
 
 class Dummy_AI: 
-    def gen_action(self, player_id, status: Dict[int, Player], queue_in: Queue, queue_out: Queue):
-        player = status[player_id]
-        opponent = status[2] if player_id == 1 else status[1]
+    def gen_action(self, player_id, queue_in: Queue, queue_out: Queue):
+        player = self.players[player_id]
+        opponent = self.players[2] if player_id == 1 else self.players[1]
         print(f'AI thread for P{player_id} running')
 
         while True:
             data = queue_in.get()
+            print('waiting')
             # wait for bitstream to become free
             opponent.ai_done.wait()
+            print('done')
             # start processing own action
             player.ai_done.clear()
             print(f'Got\n{data}')
@@ -35,15 +36,16 @@ class Dummy_AI:
                 queue_out.put([action, player_id])
             player.ai_done.set()
     
-    def run_ai(self, status: Dict[int, Player], queue_in: Queue, queue_out: Queue, end: Event):
-        self.end = end
+    def run_ai(self, status: Status, queue_in: Queue, queue_out: Queue):
+        self.end      = status.game_end
+        self.players  = status.players
 
         p1_q = Queue()
-        p1   = Thread(target=self.gen_action, args=(1, status, p1_q, queue_out))
+        p1   = Thread(target=self.gen_action, args=(1, p1_q, queue_out))
         p1.start()
 
         p2_q = Queue()
-        p2   = Thread(target=self.gen_action, args=(2, status, p2_q, queue_out))
+        p2   = Thread(target=self.gen_action, args=(2, p2_q, queue_out))
         p2.start()
 
         while True:
@@ -52,5 +54,3 @@ class Dummy_AI:
                 p1_q.put(data)
             else:
                 p2_q.put(data)
-
-            

@@ -13,18 +13,18 @@ class GameEngine:
         self.num_players    = num_players
         self.does_not_have_visualizer = does_not_have_visualizer 
 
-    def perform_action(self, action_in: Queue, status: Dict[int, Player], eval_q: Queue, viz_out: Queue, data_out: Queue):
+    def perform_action(self, action_in: Queue, players: Dict[int, Player], eval_q: Queue, viz_out: Queue, data_out: Queue):
         """use the user sent action to alter the game state"""
         while True:
             can_see = True
             # get action and calculate new game state
             action, player_id = action_in.get()
             print(f'Processing {action} by player {player_id}')
-            player = status[player_id]
+            player = players[player_id]
             player.action_done.set()
             if action == 'gun':
-                opponent = status[2] if player_id == 1 else status[1]
-                success = opponent.is_shot.wait(timeout=0.01) 
+                opponent = players[2] if player_id == 1 else players[1]
+                success = opponent.is_shot.wait(timeout=0.1) 
                 if not success:
                     alert("opponent not shot")
                     can_see = False 

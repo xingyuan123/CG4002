@@ -33,6 +33,7 @@ def ice_print_e(arg):
         ice_print(arg, color=3)
 
 def ice_print_m(arg):
+    # disable mqtt loggings
     return
     if logging:
         arg = '[MQTT] {}'.format(arg)
@@ -73,6 +74,41 @@ class Player:
         self.is_shot     = Event()
         self.ai_done     = Event()
         self.ai_done.set()
+
+class Status:
+    def __init__(self, num_players):
+        self.num_players = num_players
+        self.num_rounds  = 0
+        self.min_rounds  = 21
+        self.max_rounds  = 25
+
+        self.players = {
+            1: Player(1),
+            2: Player(2)
+        }
+        self.connect = [Event() for _ in range(7)]
+        if num_players == 1:
+            # unused devices
+            for i in [1, 5, 6]:
+                self.connect[i].set()
+    
+        self.disconnect = Event()
+        self.round_end  = Event()
+        self.game_end   = Event()
+    
+    def inc_rounds(self):
+        self.num_rounds += 1
+        # if disconn is possible (! configured for 2p)
+        # round 12 (p1), round 19/20 (p1 & p2)
+        if self.num_rounds in [12, 19, 20]:
+            self.disconnect.set()
+        else:
+            self.disconnect.clear()
+        # if logout is possible
+        if self.num_rounds >= self.min_rounds:
+            self.game_end.set()
+        # end current round
+        self.round_end.set()
 
 class MsgHelper: 
     iv = os.urandom(16)

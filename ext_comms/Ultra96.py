@@ -7,37 +7,21 @@ from EvalClient import EvalClient
 from GameEngine import GameEngine
 # from VizMqttClient import VizMqttClient
 # from ai.MLP_wrapper import MLP as AI
-# from test_ai.test_wrapper import test_AI as AI
-from dummy_AI import Dummy_AI as AI
+from test_ai.test_wrapper import test_AI as AI
+# from dummy_AI import Dummy_AI as AI
 from Timer import Timer
-from Helper import MsgHelper, Player
+from Helper import MsgHelper, Status
 from time import sleep
 
 def print_line():
     w, _ = shutil.get_terminal_size()
     print('='*w)
-    
+
 async def main():
     password    = '1234567890123456'
     num_players = 2
 
-    min_rounds = 21
-    max_rounds = 30
-
-    status = {
-        1: Player(1),
-        2: Player(2)
-    }
-    connect = [Event() for _ in range(7)]
-    if num_players == 1:
-        # unused devices
-        for i in [1, 5, 6]:
-            connect[i].set()
-   
-    disconnect = Event()
-    round_end  = Event()
-    game_end   = Event()
-
+    status      = Status(num_players)
     msg_helper  = MsgHelper(password)
 
     # Game Engine
@@ -66,20 +50,20 @@ async def main():
     await data_server.accept()
     
     # 1. TCP: Receive data from data client
-    data_recv  = Thread(target=data_server.recv_data_p, args=(status, connect, data_in, eng_in,))
+    data_recv  = Thread(target=data_server.recv_data_p, args=(status, data_in, eng_in,))
     data_recv.daemon = True
     
     # 2. AI generate action using data (dummy)
-    ai_action  = Thread(target=ai.run_ai, args=(status, data_in, eng_in, game_end,))
+    ai_action  = Thread(target=ai.run_ai, args=(status, data_in, eng_in,))
 
     # 3. Perform action: Updates game state, send to hardware & viz, eval server
-    eng_action = Thread(target=engine.perform_action, args=(eng_in, status, eval_out, viz_out, data_out,)) 
+    eng_action = Thread(target=engine.perform_action, args=(eng_in, status.players, eval_out, viz_out, data_out,)) 
 
     # # 4. MQTT: Send to Visualiser
     # viz_send   = Thread(target=viz_client.send_to_broker, args=(viz_out,))
 
     # 5. TCP: Send/receive from Eval Server
-    eval_conn  = Thread(target=eval_client.conn_eval_server, args=(eval_out, eval_in, round_end,))
+    eval_conn  = Thread(target=eval_client.conn_eval_server, args=(eval_out, eval_in, status,))
 
     # 6. Fix game state (if needed): Send to hardware and viz
     eng_fix    = Thread(target=engine.fix_game_state, args=(eval_in, viz_out, data_out,))
@@ -88,22 +72,22 @@ async def main():
     data_send  = Thread(target=data_server.send_data, args=(data_out,))
 
     # 8. Timer for failsafe actions, timeout
-    timing     = Thread(target=timer.start_timer, args=(round_end, disconnect, connect, status, eng_in,))
+    timing     = Thread(target=timer.start_timer, args=(status, eng_in,))
 
     queues  = [eng_in, eval_in, data_in, eval_out] # viz_out, data_out
     threads = [ai_action, eng_action, eval_conn, eng_fix, data_send, timing] #, viz_send]
 
     # receive initial connect packets
     data_recv.start()
-    connect[0].wait()
-
-    # connect to eval server
-    eval_client.start()
+    status.connect[0].wait()
 
     # initialise
     for queue in queues:
         with queue.mutex:
             queue.queue.clear()
+    # connect to eval server
+    eval_client.start()
+    # start threads
     for thread in threads: 
         thread.daemon = True
         thread.start()
@@ -112,10 +96,9 @@ async def main():
     print_line()
     while True:
         # at end of every round
-        round_end.wait()
+        status.round_end.wait()
         eval_client.received.set()
-        num_rounds = eval_client.num_rounds
-        print(f'Number of rounds: {num_rounds}')
+        print(f'Number of rounds: {status.num_rounds}')
 
         # clear queues to prep for next round
         for queue in queues:
@@ -124,28 +107,19 @@ async def main():
         
         # clear player done & shot status after delay
         sleep(2)
-        for player in status.values():
+        for player in status.players.values():
             player.action_done.clear()
             player.is_shot.clear()
         eval_client.sent.clear()
         eval_client.received.clear()
 
-        # if disconn is possible (! configured for 2p)
-        # round 12 (p1), round 19/20 (p1 & p2)
-        if num_rounds in [12, 19, 20]:
-            disconnect.set()
-        else:
-            disconnect.clear()
-        # if logout is possible
-        if num_rounds >= min_rounds:
-            game_end.set()
         # if game has ended
-        if num_rounds >= max_rounds:
+        if status.num_rounds >= status.max_rounds:
             break
 
         # start next round
         print_line()
-        round_end.clear()
+        status.round_end.clear()
 
     for thread in threads:
         thread.join()

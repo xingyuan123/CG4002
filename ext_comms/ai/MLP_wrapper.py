@@ -3,10 +3,10 @@ import numpy as np
 from scipy.stats import skew, kurtosis
 import pickle
 
-from threading import Thread, Event
+from Status import Status
+from threading import Thread
 from queue import Queue
-from Helper import Player, ice_print_a as print, ice_print_x as alert
-from typing import Dict
+from Helper import ice_print_a as print, ice_print_x as alert
 from pandas import DataFrame
 
 # disable warnings!!!
@@ -21,28 +21,27 @@ class MLP():
         self.dma_send = ol.axi_dma_0.sendchannel
         self.dma_recv = ol.axi_dma_0.recvchannel
         self.MLP_0 = ol.MLP_0
+
+        self.inputbuffer = allocate(shape=(54,), dtype=np.int32)
+        self.outputbuffer = allocate(shape=(9,), dtype=np.int32)
         
         self._load_weights_and_bias()
         self._load_scaler()
         self._load_normalizer()
     
-    def gen_action(self, player_id, status: Dict[int, Player], queue_in: Queue, queue_out: Queue):
-        player = status[player_id]
-        opponent = status[2] if player_id == 1 else status[1]
+    def gen_action(self, player_id, queue_in: Queue, queue_out: Queue):
+        player = self.players[player_id]
+        opponent = self.players[2] if player_id == 1 else self.players[1]
         print(f'AI thread for P{player_id} running')
 
         while True:
+            data = queue_in.get()
             # wait for bitstream to become free
             opponent.ai_done.wait()
-            self.inputbuffer = allocate(shape=(54,), dtype=np.int32)
-            self.outputbuffer = allocate(shape=(9,), dtype=np.int32)
-            
             # start processing own action
-            data = queue_in.get()
             player.ai_done.clear()
             test_point = self.preprocess(data)
             action = actions[self.inference(test_point)]
-            self.cleanup_inference()
             print(f'Generate {action} by player {player_id}')
 
             # handle idle action
@@ -53,17 +52,23 @@ class MLP():
                 alert('Logout received early. Try again')
             else:
                 queue_out.put([action, player_id])
+            
+            # cleanup before next action
+            self.cleanup_inference()
+            self.inputbuffer = allocate(shape=(54,), dtype=np.int32)
+            self.outputbuffer = allocate(shape=(9,), dtype=np.int32)
             player.ai_done.set()
     
-    def run_ai(self, status: Dict[int, Player], queue_in: Queue, queue_out: Queue, end: Event):
-        self.end = end
+    def run_ai(self, status: Status, queue_in: Queue, queue_out: Queue):
+        self.end      = status.game_end
+        self.players  = status.players
         
         p1_q = Queue()
-        p1   = Thread(target=self.gen_action, args=(1, status, p1_q, queue_out))
+        p1   = Thread(target=self.gen_action, args=(1, p1_q, queue_out))
         p1.start()
 
         p2_q = Queue()
-        p2   = Thread(target=self.gen_action, args=(2, status, p2_q, queue_out))
+        p2   = Thread(target=self.gen_action, args=(2, p2_q, queue_out))
         p2.start()
 
         while True:
