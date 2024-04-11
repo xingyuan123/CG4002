@@ -15,10 +15,8 @@ class Dummy_AI:
 
         while True:
             data = queue_in.get()
-            print('waiting')
             # wait for bitstream to become free
             opponent.ai_done.wait()
-            print('done')
             # start processing own action
             player.ai_done.clear()
             print(f'Got\n{data}')

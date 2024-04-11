@@ -76,11 +76,12 @@ class Player:
         self.ai_done.set()
 
 class Status:
-    def __init__(self, num_players):
+    def __init__(self, num_players, freeplay=False):
         self.num_players = num_players
         self.num_rounds  = 0
         self.min_rounds  = 21
         self.max_rounds  = 25
+        self.freeplay    = freeplay
 
         self.players = {
             1: Player(1),

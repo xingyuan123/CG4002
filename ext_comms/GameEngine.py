@@ -1,7 +1,6 @@
 from game.GameState import GameState
 from queue import Queue
-from Helper import Player, ice_print_g as print, ice_print_x as alert
-from typing import Dict
+from Helper import Status, ice_print_g as print, ice_print_x as alert
 
 class GameEngine:
     """
@@ -13,8 +12,9 @@ class GameEngine:
         self.num_players    = num_players
         self.does_not_have_visualizer = does_not_have_visualizer 
 
-    def perform_action(self, action_in: Queue, players: Dict[int, Player], eval_q: Queue, viz_out: Queue, data_out: Queue):
+    def perform_action(self, status: Status, action_in: Queue, viz_out: Queue, data_out: Queue, eval_q=None):
         """use the user sent action to alter the game state"""
+        players = status.players
         while True:
             can_see = True
             # get action and calculate new game state
@@ -24,8 +24,10 @@ class GameEngine:
             player.action_done.set()
             if action == 'gun':
                 opponent = players[2] if player_id == 1 else players[1]
-                success = opponent.is_shot.wait(timeout=0.1) 
-                if not success:
+                shot = opponent.is_shot.wait(timeout=0.5) 
+                if shot:
+                    opponent.is_shot.clear()
+                else:
                     alert("opponent not shot")
                     can_see = False 
             self.game_state.perform_action(action, player_id, can_see)
@@ -34,12 +36,13 @@ class GameEngine:
             # send game state to hardware
             data_out.put(game_state)
             # send player info to eval server
-            player_info = {
-                'player_id': player_id, 
-                'action': action, 
-                'game_state': game_state
-            }
-            eval_q.put(player_info)
+            if not status.freeplay:
+                player_info = {
+                    'player_id': player_id, 
+                    'action': action, 
+                    'game_state': game_state
+                }
+                eval_q.put(player_info)
             # send both to viz
             viz_player_info = {
                 'player_id': player_id, 

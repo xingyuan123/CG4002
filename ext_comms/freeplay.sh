@@ -1,9 +1,9 @@
 #!/bin/bash
-# sudo -E python Ultra96.py
+# sudo -E python Freeplay.py
 
 while :
 do
-    sudo -E python Ultra96.py
+    sudo -E python Freeplay.py
     echo "*****************************************"
     sleep 5
 done

@@ -99,9 +99,9 @@ class DataServer:
                 player.is_shot.set()
                 continue
             
-            player.ai_done.wait()
+            player.ai_done.wait() # !!!!! check w teammates
             # if player has already done action, do not process
-            if player.action_done.is_set():
+            if (not status.freeplay) and player.action_done.is_set():
                 print(f'Player {player_id} has already done action. Skipping...')
                 continue
             
