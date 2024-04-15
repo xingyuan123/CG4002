@@ -46,19 +46,20 @@ class MyDelegate(DefaultDelegate):
         self.consecutive_checksum_fail_count += 1
         print(self.color + f'<Device {self.device_id}> Failed checksum, discarded packet.' + Fore.RESET)
         if self.consecutive_checksum_fail_count == CHECKSUM_FAIL_THRESHOLD:
-            print(self.color + f'<Device {self.device_id}> Failed checksum 3 consecutive times 🙁' + Fore.RESET)
+            print(self.color + f'<Device {self.device_id}> Failed checksum 3 consecutive times 🥒' + Fore.RESET)
             self.initialize_handshake()
 
     def initialize_handshake(self):
         self.reset()
         send_hello(self.characteristic)
+        self.data_out.put(str([self.device_id, 'D']))
         print(self.color + f'<Device {self.device_id}> Initialized handshake.' + Fore.RESET)
 
     def complete_handshake(self):
         send_acknowledgement(self.characteristic)
         self.handshake_completed = True
         self.data_out.put(str([self.device_id, 'C']))
-        print(self.color + f'<Device {self.device_id}> Completed handshake, sent acknowledgement packet 🙂' + Fore.RESET)
+        print(self.color + f'<Device {self.device_id}> Completed handshake, sent acknowledgement packet 🤝' + Fore.RESET)
 
     def handle_data(self, packet_data):
         print(self.color + f'<Device {self.device_id}> Override me!')

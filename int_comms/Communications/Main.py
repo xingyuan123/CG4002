@@ -8,6 +8,7 @@ from Server.DataClient import DataClient
 
 
 def start_server_processes():
+    print('<Server> Awaiting connection~')
     if ULTRA_96:
         data_client = DataClient(ULTRA_96_IP, SERVER_PORT)
     else:

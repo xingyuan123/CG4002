@@ -1,6 +1,7 @@
 import time
 
 from bluepy.btle import Peripheral
+from colorama import Fore
 
 from Delegates.GloveDelegate import GloveDelegate
 from Delegates.GunDelegate import GunDelegate
@@ -16,8 +17,7 @@ def beetle_process(mac, device_id, color, data_in, data_out):
             beetle = Beetle(mac, device_id, color, data_in, data_out)
             handle_beetle(beetle)
         except Exception as e:
-            print_summary(device_id, color, e)
-            reset_global_arrays(device_id)
+            print(color + f'<Device {device_id}> {e} 🥒' + Fore.RESET)
             data_out.put(str([device_id, 'D']))
 
 
