@@ -40,7 +40,7 @@ async def main():
     await data_server.accept()
     
     # 1. TCP: Receive data from data client
-    data_recv  = Thread(target=data_server.recv_data_p, args=(status, data_in, eng_in,))
+    data_recv  = Thread(target=data_server.recv_data_p, args=(status, data_in, eng_in, viz_out,))
     data_recv.daemon = True
     
     # 2. AI generate action using data (dummy)

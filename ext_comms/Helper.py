@@ -70,6 +70,7 @@ def ice_print(*arg, color=0, end='\n'):
 class Player:
     def __init__(self, player_id):
         self.player_id   = player_id
+        self.vest_id     = 1 if player_id == 1 else 4
         self.action_done = Event()
         self.is_shot     = Event()
         self.ai_done     = Event()
@@ -96,6 +97,7 @@ class Status:
         self.disconnect = Event()
         self.round_end  = Event()
         self.game_end   = Event()
+        if freeplay: self.game_end.set()
     
     def inc_rounds(self):
         self.num_rounds += 1

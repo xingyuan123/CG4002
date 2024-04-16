@@ -23,7 +23,7 @@ async def main():
     msg_helper  = MsgHelper(password)
 
     # Game Engine
-    engine = GameEngine(num_players, does_not_have_visualizer=True)
+    engine = GameEngine(num_players)
     eng_in = Queue()
     eval_out = Queue()
 
@@ -41,7 +41,7 @@ async def main():
     await data_server.accept()
     
     # 1. TCP: Receive data from data client
-    data_recv  = Thread(target=data_server.recv_data_p, args=(status, data_in, eng_in,))
+    data_recv  = Thread(target=data_server.recv_data_p, args=(status, data_in, eng_in, viz_out,))
     
     # 2. AI generate action using data (dummy)
     ai_action  = Thread(target=ai.run_ai, args=(status, data_in, eng_in,))

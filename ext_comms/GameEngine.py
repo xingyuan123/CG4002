@@ -8,8 +8,8 @@ class GameEngine:
     Modified from eval server's GameSimulator.py. 
     """
     def __init__(self, num_players):
-        self.game_state     = GameState()
-        self.num_players    = num_players
+        self.game_state  = GameState()
+        self.num_players = num_players
 
     def perform_action(self, status: Status, action_in: Queue, viz_out: Queue, data_out: Queue, eval_q=None):
         """use the user sent action to alter the game state"""
@@ -23,17 +23,16 @@ class GameEngine:
             player.action_done.set()
             if action == 'gun':
                 opponent = players[2] if player_id == 1 else players[1]
+                if not status.connect[opponent.vest_id].is_set():
+                    opponent.is_shot.set()
                 shot = opponent.is_shot.wait(timeout=0.5) 
                 if shot:
                     opponent.is_shot.clear()
                 else:
                     alert("opponent not shot")
                     can_see = False 
-            self.game_state.perform_action(action, player_id, can_see)
-            game_state = self.get_game_state_dict()
+            game_state = self.game_state.perform_action(action, player_id, can_see)
 
-            # send game state to hardware
-            data_out.put(game_state)
             # send player info to eval server
             if not status.freeplay:
                 player_info = {
@@ -42,6 +41,8 @@ class GameEngine:
                     'game_state': game_state
                 }
                 eval_q.put(player_info)
+            # send game state to hardware
+            data_out.put(game_state)
             # send both to viz
             viz_player_info = {
                 'player_id': player_id, 
@@ -55,12 +56,8 @@ class GameEngine:
             # receive game state from eval server
             received_game_state = game_state_in.get()
             # if game state is different, fix and update hardware, visualiser
-            is_different = self.game_state.fix_difference(received_game_state)
-            game_state = self.get_game_state_dict()
+            game_state, is_different = self.game_state.fix_difference(received_game_state)
             if is_different:
                 data_out.put(game_state)
                 viz_out.put(['game_state', game_state])
-
-    def get_game_state_dict(self):
-        return self.game_state.get_dict()
     

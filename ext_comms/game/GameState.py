@@ -1,4 +1,5 @@
 from Helper import ice_print_x as alert
+from threading import Lock
 
 # has been modified from eval server GameState 
 # steps over visibility components for AI
@@ -6,6 +7,7 @@ class GameState:
     def __init__(self):
         self.player_1 = Player()
         self.player_2 = Player()
+        self.lock     = Lock()
 
     def __str__(self):
         return str(self.get_dict())
@@ -15,6 +17,7 @@ class GameState:
         return data
 
     def perform_action(self, action, player_id, can_see):
+        self.lock.acquire()
         """use the user sent action to alter the game state"""
         if player_id == 1:
             attacker = self.player_1
@@ -40,8 +43,12 @@ class GameState:
         else:
             # invalid action we do nothing
             pass
+        game_state = self.get_dict()
+        self.lock.release()
+        return game_state
         
     def fix_difference(self, recv_dict):
+        self.lock.acquire()
         """update our game state to the received state"""
         is_different = False
         if self.player_1.get_dict()!=recv_dict['p1']:
@@ -52,7 +59,9 @@ class GameState:
             alert('[GAME] Diff in p2')
             self.player_2.set_state(recv_dict['p2'])
             is_different = True
-        return is_different
+        game_state = self.get_dict()
+        self.lock.release()
+        return game_state, is_different
 
 
 class Player:
