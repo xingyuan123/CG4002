@@ -21,19 +21,24 @@
     - Password: 1234567890123456
     - **Click "The Team does not have a visualizer"**
 4. The browser page should update. Take note of the port number.  
-![Eval client port](images/1.png)
+<img src="images/1.png" alt="Eval client port" width="400"/>
 
 #### On Ultra96 Laptop
 1. On a terminal, run `ssh -R 8888:localhost:<server port> xilinx@172.26.191.82`. This sets up the reverse ssh tunelling from the Ultra96 to the MQTT broker.  
-![Reverse ssh tunnel command](images/2.png)  
+<img src="images/2.png" alt="Reverse ssh tunnel command" width="400"/>
 2. On another terminal, ssh into Ultra96 using `ssh xilinx@172.26.191.82`. 
-3. cd into `ext_comms` and run `bash run_ultra96.sh`. Enter the password for the Ultra96 if prompted. Your browser tab should look like this after successful initialisation.  
-![Eval client connected](images/3.png)  
-4. Terminal should print `[DATA] Waiting for client connection on port <data client port>`. Input this port number on the relay laptop (internal comms).  
-![Data client port](images/4.png)  
+3. cd into `ext_comms` and run `bash run_ultra96.sh`. Enter the password for the Ultra96 if prompted. 
+4. Terminal should print `[DATA] Waiting for client connection on port <data client port>`. Input this port number on the relay laptop (internal comms). On successful connection, you should see the message `[DATA] Client connected`. 
+<img src="images/3.png" alt="Data client connected" width="400"/> 
+5. Once all devices have been connected, the message `[EVAL] Client connected` should appear on the terminal, and you browser tab should look like this.  
+<img src="images/4.png" alt="Eval client connected Ultra96" width="400"/> 
+<img src="images/5.png" alt="Eval client connected browser" width="400"/> 
+
 
 ## For Freeplay
 #### On Ultra96 Laptop
 1. On a terminal, ssh into Ultra96 using `ssh xilinx@172.26.191.82`. 
 3. cd into `ext_comms` and run `bash freeplay.sh`. Enter the password for the Ultra96 if prompted.  
-4. Terminal should print `[DATA] Waiting for client connection on port <data client port>`. Input this port number on the relay laptop (internal comms).  
+4. Terminal should print `[DATA] Waiting for client connection on port <data client port>`. Input this port number on the relay laptop (internal comms). On successful connection, you should see the message `[DATA] Client connected`.
+5. Once all devices have been connected, freeplay can begin. 
+<img src="images/6.png" alt="Freeplay set up" width="400"/> 
