@@ -1,4 +1,4 @@
-# Ext Comms Setup
+# Setup Guide
 >Note:  
 >- Keep all terminals open throughout evaluation  
 >- To reset the Eval Server, just refresh the browser page
