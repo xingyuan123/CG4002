@@ -31,6 +31,7 @@ class VizMqttClient:
         while True:
             data = data_q.get()
             topic = data[0]
+            if topic == 'device_status': continue # scrapped disconn MQTT messages
             msg = data[1]
             result = self.client.publish(topic, json.dumps(msg))
             status = result[0]

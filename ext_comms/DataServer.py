@@ -3,7 +3,16 @@ import socket
 import ast
 from pandas import DataFrame
 from queue import Queue
-from Helper import MsgHelper, Status, ice_print_d as print, ice_print_x as alert
+from Helper import MsgHelper, Status, ice_print_d as print, ice_print_c as alert
+
+DEVICE_IDS = {
+    1: ('VEST',  1), 
+    2: ('GLOVE', 1), 
+    3: ('GUN',   1), 
+    4: ('VEST',  2), 
+    5: ('GLOVE', 2), 
+    6: ('GUN',   2)
+}
 
 def format_game_state(gs):
     return [
@@ -28,15 +37,6 @@ class DataServer:
     - DataClient on relay laptop
     - AI on Ultra96
     """
-
-    DEVICE_IDS = {
-        1: ('VEST',  1), 
-        2: ('GLOVE', 1), 
-        3: ('GUN',   1), 
-        4: ('VEST',  2), 
-        5: ('GLOVE', 2), 
-        6: ('GUN',   2)
-    }
     
     def __init__(self, msg: MsgHelper):
         self.msg = msg
@@ -50,7 +50,7 @@ class DataServer:
         self.addr   = None  # address of the client
         self.conn   = None  # address of the client socket
 
-    async def accept (self):
+    async def accept(self):
         """
         Asynchronously wait for a single client to connect
         """
@@ -76,9 +76,8 @@ class DataServer:
                 continue
             data = ast.literal_eval(data)
             device_id = data[0]
-            device, player_id = self.DEVICE_IDS[device_id]
+            device, player_id = DEVICE_IDS[device_id]
             player = status.players[player_id]
-            print(f'Player: {player_id}, Device: {device}')
 
             # handle disconnect packets
             if len(data) == 2:
@@ -95,7 +94,6 @@ class DataServer:
                     reconnected = True
                     for item in status.connect[1:]:
                         if not item.is_set():
-                            alert(f'DEVICES STILL DISCONNECTED')
                             reconnected = False
                             break
                     # no devices disconnected
@@ -103,7 +101,8 @@ class DataServer:
                         alert('All devices connected! :)')
                         status.connect[0].set()
                     continue
-
+            
+            print(f'Player: {player_id}, Device: {device}')
             if device == 'VEST':
                 player.is_shot.set()
                 continue
@@ -130,4 +129,3 @@ class DataServer:
             print(f'Sending {data}') 
             data = self.msg.format_text(str(data))
             self.conn.send(data)
-

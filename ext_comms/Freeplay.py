@@ -4,10 +4,8 @@ from threading import Thread
 from queue import Queue
 from DataServer import DataServer
 from GameEngine import GameEngine
-# from VizMqttClient import VizMqttClient
-# from ai.MLP_wrapper import MLP as AI
-# from test_ai.test_wrapper import test_AI as AI
-from dummy_AI import Dummy_AI as AI
+from VizMqttClient import VizMqttClient
+from ai.MLP_wrapper import MLP as AI
 from Helper import MsgHelper, Status
 
 def print_line():
@@ -29,8 +27,8 @@ async def main():
     # AI
     ai = AI()
 
-    # # Visualiser
-    # viz_client = VizMqttClient()
+    # Visualiser
+    viz_client = VizMqttClient()
     viz_out = Queue()
 
     # Data Server
@@ -49,14 +47,14 @@ async def main():
     # 3. Perform action: Updates game state, send to hardware & viz, eval server
     eng_action = Thread(target=engine.perform_action, args=(status, eng_in, viz_out, data_out,)) 
 
-    # # 4. MQTT: Send to Visualiser
-    # viz_send   = Thread(target=viz_client.send_to_broker, args=(viz_out,))
+    # 4. MQTT: Send to Visualiser
+    viz_send   = Thread(target=viz_client.send_to_broker, args=(viz_out,))
 
     # 7. TCP: Send data back to data client
     data_send  = Thread(target=data_server.send_data, args=(data_out,))
 
-    queues  = [eng_in, eval_in, data_in] # viz_out, data_out
-    threads = [ai_action, eng_action, data_send] #, viz_send]
+    queues  = [eng_in, eval_in, data_in] 
+    threads = [ai_action, eng_action, data_send, viz_send]
 
     # receive initial connect packets
     data_recv.start()
@@ -77,7 +75,7 @@ async def main():
         pass
 
 if __name__ == "__main__":
-    print('Initialising Ultra96')
+    print('Initialising Freeplay')
     try:
         asyncio.run(main())
     except KeyboardInterrupt:

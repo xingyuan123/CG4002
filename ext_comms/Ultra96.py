@@ -5,10 +5,8 @@ from queue import Queue
 from DataServer import DataServer
 from EvalClient import EvalClient
 from GameEngine import GameEngine
-# from VizMqttClient import VizMqttClient
-# from ai.MLP_wrapper import MLP as AI
-# from test_ai.test_wrapper import test_AI as AI
-from dummy_AI import Dummy_AI as AI
+from VizMqttClient import VizMqttClient
+from ai.MLP_wrapper import MLP as AI
 from Timer import Timer
 from Helper import MsgHelper, Status
 from time import sleep
@@ -16,7 +14,7 @@ from time import sleep
 def print_line():
     w, _ = shutil.get_terminal_size()
     print('='*w)
-
+    
 async def main():
     password    = '1234567890123456'
     num_players = 2
@@ -36,8 +34,8 @@ async def main():
     eval_client = EvalClient(num_players, msg_helper)
     eval_out = Queue()
 
-    # # Visualiser
-    # viz_client = VizMqttClient()
+    # Visualiser
+    viz_client = VizMqttClient()
     viz_out = Queue()
 
     # Timer
@@ -50,7 +48,7 @@ async def main():
     await data_server.accept()
     
     # 1. TCP: Receive data from data client
-    data_recv  = Thread(target=data_server.recv_data_p, args=(status, data_in, eng_in,))
+    data_recv  = Thread(target=data_server.recv_data_p, args=(status, data_in, eng_in, viz_out,))
     data_recv.daemon = True
     
     # 2. AI generate action using data (dummy)
@@ -59,8 +57,8 @@ async def main():
     # 3. Perform action: Updates game state, send to hardware & viz, eval server
     eng_action = Thread(target=engine.perform_action, args=(status, eng_in, viz_out, data_out, eval_out,)) 
 
-    # # 4. MQTT: Send to Visualiser
-    # viz_send   = Thread(target=viz_client.send_to_broker, args=(viz_out,))
+    # 4. MQTT: Send to Visualiser
+    viz_send   = Thread(target=viz_client.send_to_broker, args=(viz_out,))
 
     # 5. TCP: Send/receive from Eval Server
     eval_conn  = Thread(target=eval_client.conn_eval_server, args=(eval_out, eval_in, status,))
@@ -74,8 +72,8 @@ async def main():
     # 8. Timer for failsafe actions, timeout
     timing     = Thread(target=timer.start_timer, args=(status, eng_in,))
 
-    queues  = [eng_in, eval_in, data_in, eval_out] # viz_out, data_out
-    threads = [ai_action, eng_action, eval_conn, eng_fix, data_send, timing] #, viz_send]
+    queues  = [eng_in, eval_in, data_in, eval_out] 
+    threads = [ai_action, eng_action, eval_conn, eng_fix, data_send, timing, viz_send]
 
     # receive initial connect packets
     data_recv.start()
@@ -91,7 +89,7 @@ async def main():
     for thread in threads: 
         thread.daemon = True
         thread.start()
-    
+
     print('Starting game')
     print_line()
     while True:

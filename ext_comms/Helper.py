@@ -10,6 +10,10 @@ def ice_print_x(arg):
     arg = 'ALERT! {}'.format(arg)
     ice_print(arg, color=1)
 
+def ice_print_c(arg):
+    arg = '[CONN] {}'.format(arg)
+    ice_print(arg, color=7)
+
 def ice_print_a(arg):
     arg = '[ AI ] {}'.format(arg)
     ice_print(arg, color=8)
@@ -33,8 +37,6 @@ def ice_print_e(arg):
         ice_print(arg, color=3)
 
 def ice_print_m(arg):
-    # disable mqtt loggings
-    return
     if logging:
         arg = '[MQTT] {}'.format(arg)
         ice_print(arg, color=5)
@@ -66,7 +68,7 @@ def ice_print(*arg, color=0, end='\n'):
         for a in arg:
             print(_c[color] + str(a) + _c[0], end=' ')
     print(end, end='')
-
+    
 class Player:
     def __init__(self, player_id):
         self.player_id   = player_id
